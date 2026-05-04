@@ -39,6 +39,8 @@ int main(int argc, char**argv) {
 
     bool run = false;
     double angle = 0.0;
+    int speedX = 0;
+    int speedY = 0;
 
     while(!run) {
         int startLoop = SDL_GetTicks();
@@ -48,9 +50,26 @@ int main(int argc, char**argv) {
                 case SDL_QUIT:
                 run = true;
                 break;
+                case SDL_KEYDOWN:
+                switch(ev.key.keysym.sym) {
+                    case SDLK_UP: speedY = -1; break;
+                    case SDLK_DOWN: speedY = 1; break;
+                    case SDLK_LEFT: speedX =-1; break;
+                    case SDLK_RIGHT: speedX = 1; break;
+                }
+                break;
+                case SDL_KEYUP:
+                switch(ev.key.keysym.sym) {
+                    case SDLK_UP:
+                    case SDLK_DOWN: speedY = 0; break;
+                    case SDLK_LEFT:
+                    case SDLK_RIGHT: speedX = 0; break;
+                }
+                break;
             }
         }
         SDL_RenderClear(render);
+        bob.move(speedX, speedY);
         bob.draw();
         for(auto it=gems.begin(); it!=gems.end();) {
             (*it)->draw(angle);
