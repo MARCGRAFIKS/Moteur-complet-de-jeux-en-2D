@@ -26,6 +26,11 @@ void Item::setPos(int x, int y) {
     pos.x = x;
     pos.y = y;
 }
+
+void Item::move(int x, int y) {
+    pos.x += x;
+    pos.y += y;
+}
     
 void Item::draw() {
     if(image!=nullptr) {
@@ -57,7 +62,7 @@ bool Animation::addImage(const std::string& file) {
     return false;
 }
 
-bool Animation::loadAnimation(std::string base, std::string count, std::string ext) {
+bool Animation::loadAnimation(const std::string& base, std::string count, const std::string& ext) {
     int lenght = count.length();
     while(true) {
         
@@ -85,6 +90,7 @@ void Animation::update(int tick) {
 
     
 void Animation::setFPS(int FPS) {
+    if(FPS>0)
     desiredDelta = 1000/FPS;
 }
 
@@ -94,4 +100,45 @@ void Animation::next() {
     }
     frameCount = (frameCount +1) % images.size();
     image = images[frameCount];
+}
+
+///////////////////////////////////classe groupe ///////////////////////////////:
+
+void Group::draw() {
+   for(auto* item : items) {
+        item->draw();
+    }
+}
+    
+void Group::addRefe(Item* other) {
+    items.push_back(other);
+}
+    
+void Group::move(int x, int y) {
+    for(auto* item : items) {
+        item->move(x, y);
+    }
+}
+
+///////////////////////Board////////////////////////////
+
+Board::Board(SDL_Renderer* rend) {
+    render = rend;
+    int w, h;
+    SDL_GetRendererOutputSize(render, &w, &h);
+    player.setPos(w/2-32, h/2-32);
+    bkgr.setSize(w, h);
+    bkgr.setPos(0, 0);
+}
+
+void Board::move(int x, int y) {
+    drawn.move(-x, -y);
+    click.move(-x, -y);
+    collide.move(-x, -y);
+}
+    
+void Board::draw() {
+    bkgr.draw();
+    drawn.draw();
+    player.draw();
 }
