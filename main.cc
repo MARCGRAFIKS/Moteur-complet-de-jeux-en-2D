@@ -3,18 +3,6 @@
 #include <cstdlib>
 #include <memory>
 
-// une fonction qui va multiplier les items
-void multiItem(std::vector<std::unique_ptr<Item>>& gems, int maxGem, SDL_Renderer* rend) {
-    for(int i=0; i<maxGem; i++) {
-        auto gem = std::make_unique<Item>();
-        gem->setRenderer(rend);
-        gem->loadFromImage("terre.png");
-        gem->setSize(32, 32);
-        gem->setPos(rand()%750, rand()%450);
-        gems.push_back(std::move(gem));
-    }
-}
-
 int main(int argc, char**argv) {
 
     init_Item();
@@ -24,60 +12,27 @@ int main(int argc, char**argv) {
     // introduction de rendure
     Renderer renderer;
     
-    // instation du player
-    Animation bob;
-    bob.setRenderer(render);
-    if(!bob.loadAnimation("person/JK_P_Sword__Run_", "000", ".png"))
-    std::cout << "Rien de bon a afficher" << std::endl;
-    bob.setPos(50, 50);
-    bob.setSize(100, 100);
+    Board board(render);
+
+    bool run = true;
+    SDL_Event ev;
     
-    // instantion du obstacle multiple
-    std::vector<std::unique_ptr<Item>>  gems;
-    int maxGem = 100;
-    multiItem(gems, maxGem, render);
-
-    bool run = false;
-    double angle = 0.0;
-    int speedX = 0;
-    int speedY = 0;
-
-    while(!run) {
-        int startLoop = SDL_GetTicks();
-        SDL_Event ev;
+    while(run) {
+        int tick = SDL_GetTicks();
         while(SDL_PollEvent(&ev)) {
             switch(ev.type) {
                 case SDL_QUIT:
-                run = true;
-                break;
-                case SDL_KEYDOWN:
-                switch(ev.key.keysym.sym) {
-                    case SDLK_UP: speedY = -1; break;
-                    case SDLK_DOWN: speedY = 1; break;
-                    case SDLK_LEFT: speedX =-1; break;
-                    case SDLK_RIGHT: speedX = 1; break;
-                }
-                break;
-                case SDL_KEYUP:
-                switch(ev.key.keysym.sym) {
-                    case SDLK_UP:
-                    case SDLK_DOWN: speedY = 0; break;
-                    case SDLK_LEFT:
-                    case SDLK_RIGHT: speedX = 0; break;
-                }
+                run = false;
                 break;
             }
+            board.handleEvent(ev); // input centralisé
         }
+    
+        board.update(tick); //logique centralisé
         SDL_RenderClear(render);
-        bob.move(speedX, speedY);
-        bob.draw();
-        for(auto it=gems.begin(); it!=gems.end();) {
-            (*it)->draw(angle);
-            ++it;
-        }
+        board.draw();
         SDL_RenderPresent(render);
-        bob.update(startLoop);
-        ++angle;
+        SDL_Delay(16);
     }
 
     renderer.clearTexture();
@@ -85,5 +40,4 @@ int main(int argc, char**argv) {
     SDL_DestroyWindow(win);
     quit_Item();
     return 0;
-
 }
