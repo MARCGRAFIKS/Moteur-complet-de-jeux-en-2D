@@ -6,6 +6,11 @@
 #include <memory>
 #include <algorithm>
 
+struct Cercle {
+    int x, y;
+    double r;
+};
+
 void init_Item();
 void quit_Item();
 
@@ -16,13 +21,22 @@ class Item : public Renderer{
     void setSize(int w, int h);
     void setPos(int x, int y);
     void move(int x, int y);
-    void draw();
-    void draw(double angle);
+    void draw(SDL_RendererFlip flip = SDL_FLIP_NONE);
+    void draw(double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
     virtual void update(int tick);
+    void updateCercle();
+    void setCercle(int x, int y, double r);
+    SDL_Rect getPos();
+    Cercle getCentre() const;
+    int getX();
+    bool getCollision(const Item& other) const;
+    bool getCollisionRect(const Item& other) const;
+    bool isClicked(int x, int y) const;
     int z = 0;
 
     protected:
     SDL_Rect pos;
+    Cercle centre;
     int oldTick;
 };
 
@@ -48,8 +62,8 @@ class Animation : public Item {
 
 class Group {
     public:
-    void draw();
-    void draw(double angle);
+    void draw(SDL_RendererFlip flip = SDL_FLIP_NONE);
+    void draw(double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
     void addRefe(Item* other);
     void remove(Item* other);
     void update(int itck);
@@ -57,7 +71,7 @@ class Group {
     void spawnItems(int count, SDL_Renderer* rend);
     // fonctionspécialisées
     void handleClick(int x, int y);
-    void checkCollision(int x, int y);
+    void checkCollision();
     // ajout du filtres 
     std::vector<Item*> getVisible();
     void move(int x, int y);
@@ -86,4 +100,6 @@ class Board {
     Item bkgr;
     int speedX = 0;
     int speedY = 0;
+    double a = 1.1;
+    SDL_RendererFlip flip; 
 };
