@@ -11,6 +11,15 @@ struct Cercle {
     double r;
 };
 
+struct Camera {
+    int x, y;
+    int w, h;
+};
+
+const int TILE_SIZE = 64;
+const int MAP_W = 30;
+const int MAP_H = 20;
+
 void init_Item();
 void quit_Item();
 
@@ -21,14 +30,15 @@ class Item : public Renderer{
     void setSize(int w, int h);
     void setPos(int x, int y);
     void move(int x, int y);
-    void draw(SDL_RendererFlip flip = SDL_FLIP_NONE);
-    void draw(double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
+    void draw(const Camera& cam, SDL_RendererFlip flip = SDL_FLIP_NONE);
+    void draw(const Camera& cam, double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
     virtual void update(int tick);
     void updateCercle();
     void setCercle(int x, int y, double r);
     SDL_Rect getPos();
     Cercle getCentre() const;
     int getX();
+    int getY();
     bool getCollision(const Item& other) const;
     bool getCollisionRect(const Item& other) const;
     bool isClicked(int x, int y) const;
@@ -62,8 +72,8 @@ class Animation : public Item {
 
 class Group {
     public:
-    void draw(SDL_RendererFlip flip = SDL_FLIP_NONE);
-    void draw(double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
+    void draw(const Camera& cam, SDL_RendererFlip flip = SDL_FLIP_NONE);
+    void draw(const Camera& cam, double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
     void addRefe(Item* other);
     void remove(Item* other);
     void update(int itck);
@@ -87,6 +97,7 @@ class Board {
     Board(SDL_Renderer* rend);
     void move(int x, int y);
     void update(int tick);
+    void clampPlayer();
     void handleEvent(const SDL_Event& ev);
     void draw();
 
@@ -100,6 +111,30 @@ class Board {
     Item bkgr;
     int speedX = 0;
     int speedY = 0;
+    int mapWidth = 1000;
+    int mapHeight = 600;
     double a = 1.1;
     SDL_RendererFlip flip; 
+    Camera cam;
+    TileMap tileMap;
+};
+
+//////////////////////////////////////////////////////////////:
+
+class TileMap {
+
+private:
+
+    SDL_Texture* tileset;
+    SDL_Renderer* render;
+
+public:
+
+    int map[MAP_H][MAP_W];
+
+    bool load(const std::string& file);
+
+    void draw(const Camera& cam);
+
+    bool isSolid(int x, int y);
 };

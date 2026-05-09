@@ -38,15 +38,30 @@ void Item::move(int x, int y) {
     updateCercle();
 }
     
-void Item::draw(SDL_RendererFlip flip) {
+void Item::draw(const Camera& cam, SDL_RendererFlip flip) {
     if(image!=nullptr) {
-        SDL_RenderCopyEx(render, image, nullptr, &pos, 0, nullptr, flip);
+        SDL_Rect screenPos = {
+            pos.x - cam.x,
+            pos.y - cam.y,
+            pos.w, 
+            pos.h
+        };
+    
+
+        SDL_RenderCopyEx(render, image, nullptr, &screenPos, 0, nullptr, flip);
     }
 }
 
-void Item::draw(double angle, SDL_RendererFlip flip) {
+void Item::draw(const Camera& cam, double angle, SDL_RendererFlip flip) {
     if(image!=nullptr) {
-        SDL_RenderCopyEx(render, image, nullptr, &pos, angle, nullptr, flip);
+        SDL_Rect screenPos = {
+            pos.x - cam.x,
+            pos.y - cam.y,
+            pos.w, 
+            pos.h
+        };
+
+        SDL_RenderCopyEx(render, image, nullptr, &screenPos, angle, nullptr, flip);
     }
 }
 
@@ -66,6 +81,10 @@ Cercle Item::getCentre() const{
 
 int Item::getX() {
     return pos.x;
+}
+
+int Item::getY() {
+    return pos.y;
 }
 
 void Item::updateCercle() {
@@ -166,20 +185,20 @@ void Animation::next() {
 
 ///////////////////////////////////classe groupe ///////////////////////////////:
 
-void Group::draw(SDL_RendererFlip flip) {
+void Group::draw(const Camera& cam, SDL_RendererFlip flip) {
      std::sort(items.begin(), items.end(), [](Item*a, Item* b){
       return a->z <b->z;
      });
 
      for(auto* item : items) {
-      item->draw(flip);
+      item->draw(cam, flip);
      }     
 }
 
-void Group::draw(double angle, SDL_RendererFlip flip) {
+void Group::draw(const Camera& cam, double angle, SDL_RendererFlip flip) {
     
      for(auto& item : gemItems) {
-      item->draw(angle, flip);
+      item->draw(cam, angle, flip);
      }
         
 }
@@ -257,6 +276,10 @@ void Group::move(int x, int y) {
 
 Board::Board(SDL_Renderer* rend) {
     render = rend;
+    SDL_GetRendererOutputSize(rend, &cam.w, &cam.h);
+    cam.x = 0;
+    cam.y = 0;
+    a = 1.1;
     flip = SDL_FLIP_NONE;
     int w, h;
     SDL_GetRendererOutputSize(render, &w, &h);
@@ -269,7 +292,7 @@ Board::Board(SDL_Renderer* rend) {
     
     bkgr.setRenderer(render);
     bkgr.loadFromImage("terre.png");
-    bkgr.setSize(w, h);
+    bkgr.setSize(mapWidth, mapHeight);
     bkgr.setPos(0, 0);
 
     drawn.addRefe(&player);
@@ -277,13 +300,33 @@ Board::Board(SDL_Renderer* rend) {
 
 void Board::move(int x, int y) {
     drawn.move(x, y);
-    click.move(-x, -y);
-    collide.move(-x, -y);
+    clampPlayer();
 }
 
 void Board::update(int tick) {
+    // Faire suive camera au joueur
+    cam.x = player.getX() - cam.w/2;
+    cam.y = player.getY() - cam.h/2;
+    // contr$ole de camera 
+    if(cam.x < 0) cam.x = 0;
+    if(cam.y < 0) cam.y = 0;
+    if(cam.x > MAP_W * TILE_SIZE - cam.w) cam.x = MAP_W * TILE_SIZE - cam.w;
+    if(cam.y > MAP_H * TILE_SIZE - cam.h) cam.y = MAP_H * TILE_SIZE - cam.h;
     // deplacement joueur
     move(speedX, speedY);
+    // collision
+     SDL_Rect p = player.getPos();
+
+    int centerX = p.x + p.w / 2;
+    int centerY = p.y + p.h / 2;
+
+    int tileX = centerX / TILE_SIZE;
+    int tileY = centerY / TILE_SIZE;
+
+    if(tileMap.isSolid(tileX, tileY)) {
+
+        player.move(-speedX, -speedY);
+    }
     // update des groupes
     drawn.update(tick);
     click.update(tick);
@@ -316,10 +359,82 @@ void Board::handleEvent(const SDL_Event& ev) {
 }
     
 void Board::draw() {
-    bkgr.draw();
-    drawn.draw(flip);
-    gem.draw(a);
-    collide.draw();
-    click.draw();
+    bkgr.draw(cam);
+    drawn.draw(cam, flip);
+    gem.draw(cam, a);
+    collide.draw(cam);
+    click.draw(cam);
     a ++;
+}
+
+void Board::clampPlayer() {
+
+    SDL_Rect p = player.getPos();
+
+    if(p.x < 0)
+        p.x = 0;
+
+    if(p.y < 0)
+        p.y = 0;
+
+    if(p.x + p.w > MAP_W * TILE_SIZE)
+        p.x = MAP_W * TILE_SIZE - p.w;
+
+    if(p.y + p.h >MAP_H * TILE_SIZE)
+        p.y = MAP_H * TILE_SIZE - p.h;
+
+    player.setPos(p.x, p.y);
+}
+
+
+//////////////////:classe de tilemap///////////////////////////////
+
+bool TileMap::load(const std::string& file) {
+
+    SDL_Surface* surf = IMG_Load(file.c_str());
+
+    if(!surf)
+        return false;
+
+    tileset = SDL_CreateTextureFromSurface(render, surf);
+
+    SDL_FreeSurface(surf);
+
+    return tileset != nullptr;
+}
+
+void TileMap::draw(const Camera& cam) {
+
+    SDL_Rect src;
+    SDL_Rect dst;
+
+    src.w = TILE_SIZE;
+    src.h = TILE_SIZE;
+
+    dst.w = TILE_SIZE;
+    dst.h = TILE_SIZE;
+
+    for(int y = 0; y < MAP_H; y++) {
+
+        for(int x = 0; x < MAP_W; x++) {
+
+            int tile = map[y][x];
+
+            src.x = tile * TILE_SIZE;
+            src.y = 0;
+
+            dst.x = x * TILE_SIZE - cam.x;
+            dst.y = y * TILE_SIZE - cam.y;
+
+            SDL_RenderCopy(render, tileset, &src, &dst);
+        }
+    }
+}
+
+bool TileMap::isSolid(int x, int y) {
+
+    if(x < 0 || x >= MAP_W || y < 0 || y >= MAP_H)
+        return true;
+
+    return map[y][x] == 1;
 }
