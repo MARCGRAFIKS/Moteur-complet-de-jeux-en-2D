@@ -1,6 +1,9 @@
 #include "renderer.hpp"
 
-    bool Renderer::loadFromImage(const std::string& filePath) {
+std::unordered_map<std::string, SDL_Texture*> Renderer::textureCache;
+
+bool Renderer::loadFromImage(const std::string& filePath) {
+    if(!render)return false;
     auto it = textureCache.find(filePath);
     if(it!=textureCache.end())
     return (image = it->second)!=nullptr;
@@ -9,7 +12,7 @@
     return false;
     textureCache[filePath] = image;
     return image!=nullptr;
- }
+}
 
 void Renderer::setRenderer(SDL_Renderer* rend) {
     render = rend;
@@ -17,6 +20,7 @@ void Renderer::setRenderer(SDL_Renderer* rend) {
 
 void Renderer::clearTexture() {
     for(auto& pair : textureCache) {
+        if(pair.second)
         SDL_DestroyTexture(pair.second);
     }
     textureCache.clear();
