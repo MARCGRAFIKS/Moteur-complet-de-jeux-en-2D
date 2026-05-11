@@ -20,6 +20,8 @@ const int TILE_SIZE = 64;
 const int MAP_W = 30;
 const int MAP_H = 20;
 
+const int PLAYER_SPEED = 4;
+
 void init_Item();
 void quit_Item();
 
@@ -91,6 +93,25 @@ class Group {
     std::vector<std::unique_ptr<Item>> gemItems;
 };
 
+//Ajout de classe de map
+
+class TileMap {
+
+private:
+
+    SDL_Texture* tileset;
+    SDL_Renderer* render;
+
+public:
+
+    int map[MAP_H][MAP_W];
+    TileMap(SDL_Renderer* rend);
+    ~TileMap();
+    bool load(const std::string& file);
+    void draw(const Camera& cam);
+    bool isSolid(int x, int y);
+};
+
 // ajout classe de board
 class Board {
     public:
@@ -108,9 +129,8 @@ class Board {
     Group click;  
     Group collide;
     Animation player;
-    Item bkgr;
-    int speedX = 0;
-    int speedY = 0;
+    int speedX = PLAYER_SPEED;
+    int speedY = PLAYER_SPEED;
     int mapWidth = 1000;
     int mapHeight = 600;
     double a = 1.1;
@@ -119,22 +139,3 @@ class Board {
     TileMap tileMap;
 };
 
-//////////////////////////////////////////////////////////////:
-
-class TileMap {
-
-private:
-
-    SDL_Texture* tileset;
-    SDL_Renderer* render;
-
-public:
-
-    int map[MAP_H][MAP_W];
-
-    bool load(const std::string& file);
-
-    void draw(const Camera& cam);
-
-    bool isSolid(int x, int y);
-};

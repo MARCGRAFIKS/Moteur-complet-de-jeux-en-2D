@@ -11,7 +11,7 @@ void quit_Item() {
     SDL_Quit();
 }
 
-Item::Item() : pos{0, 0, 32, 32}, oldTick(0) {}
+Item::Item() : pos{0, 0, 64, 32}, oldTick(0) {}
 
 Item::~Item() {
     image = nullptr;
@@ -227,7 +227,7 @@ void Group::spawnItems(int count, SDL_Renderer* rend) {
         auto gem = std::make_unique<Item>();
         gem->setRenderer(rend);
         gem->loadFromImage("terre.png");
-        gem->setSize(32, 32);
+        gem->setSize(64, 64);
         gem->setPos(rand() % 750, rand() % 450);
 
         add(std::move(gem));
@@ -274,7 +274,7 @@ void Group::move(int x, int y) {
 
 ///////////////////////Board////////////////////////////
 
-Board::Board(SDL_Renderer* rend) {
+Board::Board(SDL_Renderer* rend) : tileMap(rend){
     render = rend;
     SDL_GetRendererOutputSize(rend, &cam.w, &cam.h);
     cam.x = 0;
@@ -282,18 +282,16 @@ Board::Board(SDL_Renderer* rend) {
     a = 1.1;
     flip = SDL_FLIP_NONE;
     int w, h;
+    tileMap.load("maptile.png");
+
     SDL_GetRendererOutputSize(render, &w, &h);
     player.setRenderer(render);
     player.loadAnimation("person/JK_P_Sword__Run_", "000", ".png");
-    player.setPos(w/2-32, h/2-32);
+    player.setPos(w/2-64, h/2-64);
     player.setSize(64, 64);
+    player.setFPS(10);
 
     gem.spawnItems(10, render);
-    
-    bkgr.setRenderer(render);
-    bkgr.loadFromImage("terre.png");
-    bkgr.setSize(mapWidth, mapHeight);
-    bkgr.setPos(0, 0);
 
     drawn.addRefe(&player);
 }
@@ -359,7 +357,7 @@ void Board::handleEvent(const SDL_Event& ev) {
 }
     
 void Board::draw() {
-    bkgr.draw(cam);
+    tileMap.draw(cam);
     drawn.draw(cam, flip);
     gem.draw(cam, a);
     collide.draw(cam);
@@ -388,6 +386,43 @@ void Board::clampPlayer() {
 
 
 //////////////////:classe de tilemap///////////////////////////////
+
+TileMap::TileMap(SDL_Renderer* rend) : render(rend) {
+    int temp[MAP_H][MAP_W] = {
+    {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2},
+    {2, 4, 4, 4, 4, 4, 4, 4, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 4, 4, 4, 4, 1, 4, 1, 4, 4, 2}, 
+    {2, 4, 4, 4, 2, 2, 2, 4, 4, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 4, 1, 1, 1, 2, 1, 1, 2}, 
+    {2, 2, 2, 4, 3, 3, 3, 4, 4, 2, 2, 1, 1, 3, 3, 4, 4, 4, 4, 4, 1, 1, 1, 1, 4, 1, 2, 3, 3, 2}, 
+    {2, 2, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 4, 4, 4, 4, 2, 2, 4, 4, 4, 4, 2, 1, 3, 2}, 
+    {2, 1, 1, 4, 4, 4, 4, 1, 4, 2, 4, 4, 1, 1, 1, 3, 4, 4, 4, 4, 2, 4, 4, 4, 4, 2, 2, 1, 3, 2}, 
+    {2, 1, 1, 4, 2, 2, 2, 1, 2, 2, 4, 4, 2, 2, 3, 3, 4, 4, 4, 4, 2, 4, 4, 1, 1, 2, 4, 1, 4, 2}, 
+    {2, 4, 1, 1, 3, 3, 3, 1, 2, 4, 4, 4, 2, 3, 3, 4, 4, 1, 1, 4, 4, 1, 1, 2, 1, 2, 4, 1, 4, 2}, 
+    {2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 3, 4, 4, 4, 1, 1, 1, 1, 4, 2, 2, 4, 1, 1, 1, 1, 2}, 
+    {2, 4, 2, 1, 1, 1, 1, 4, 4, 4, 2, 3, 3, 3, 2, 4, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 4, 2}, 
+    {2, 4, 2, 1, 2, 2, 2, 4, 4, 4, 2, 3, 4, 2, 2, 1, 1, 4, 4, 3, 3, 3, 3, 3, 3, 4, 4, 1, 4, 2}, 
+    {2, 4, 1, 2, 2, 1, 2, 4, 4, 2, 2, 3, 2, 2, 1, 4, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 4, 1, 4, 2}, 
+    {2, 4, 1, 1, 1, 1, 1, 4, 4, 2, 3, 3, 4, 1, 1, 4, 4, 1, 1, 1, 4, 4, 3, 4, 1, 1, 4, 1, 4, 2}, 
+    {2, 4, 1, 1, 3, 3, 1, 4, 4, 2, 3, 3, 4, 1, 1, 4, 4, 4, 1, 1, 4, 4, 3, 4, 1, 1, 4, 4, 4, 2}, 
+    {2, 4, 1, 4, 3, 1, 4, 4, 4, 2, 3, 3, 4, 1, 1, 4, 4, 4, 4, 1, 1, 4, 3, 4, 4, 1, 1, 1, 4, 2}, 
+    {2, 4, 1, 1, 4, 1, 1, 4, 4, 2, 3, 4, 4, 1, 4, 4, 4, 4, 1, 1, 4, 4, 3, 4, 4, 4, 4, 4, 1, 2}, 
+    {2, 4, 4, 1, 1, 4, 1, 4, 4, 3, 3, 4, 1, 1, 4, 4, 4, 4, 2, 4, 4, 3, 2, 2, 1, 4, 4, 1, 1, 2}, 
+    {2, 4, 4, 4, 1, 1, 4, 4, 3, 3, 4, 4, 1, 4, 4, 4, 4, 4, 2, 2, 3, 3, 2, 1, 4, 1, 1, 4, 4, 2}, 
+    {2, 4, 4, 4, 4, 1, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 4, 4, 4, 3, 3, 1, 1, 1, 4, 1, 4, 4, 4, 2}, 
+    {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+   };
+
+   for(int y=0; y<MAP_H; y++) {
+    for(int x=0; x<MAP_W; x++) {
+        map[y][x]  = temp[y][x];
+     }
+   }
+}
+
+TileMap::~TileMap() {
+    if(nullptr!=tileset) {
+        SDL_DestroyTexture(tileset);
+    }
+}
 
 bool TileMap::load(const std::string& file) {
 
@@ -420,7 +455,7 @@ void TileMap::draw(const Camera& cam) {
 
             int tile = map[y][x];
 
-            src.x = tile * TILE_SIZE;
+            src.x = (tile-1) * TILE_SIZE;
             src.y = 0;
 
             dst.x = x * TILE_SIZE - cam.x;
