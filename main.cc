@@ -16,9 +16,14 @@ int main(int argc, char**argv) {
 
     bool run = true;
     SDL_Event ev;
+
+    Uint32 lastTick = SDL_GetTicks();
     
     while(run) {
-        int tick = SDL_GetTicks();
+        Uint32 currentTick = SDL_GetTicks();
+        float deltaTime = (currentTick - lastTick) / 1000.0f;
+        lastTick = currentTick;
+
         while(SDL_PollEvent(&ev)) {
             switch(ev.type) {
                 case SDL_QUIT:
@@ -28,7 +33,7 @@ int main(int argc, char**argv) {
             board.handleEvent(ev); // input centralisé
         }
     
-        board.update(tick); //logique centralisé
+        board.update(currentTick, deltaTime); //logique centralisé
         SDL_RenderClear(render);
         board.draw();
         SDL_RenderPresent(render);
