@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <fstream>
+#include <sstream>
 
 struct Cercle {
     int x, y;
@@ -16,12 +18,16 @@ struct Camera {
     int w, h;
 };
 
-const int TILE_SIZE = 64;
+// Ajouter un enum propre
+enum TileType {
+    TILE_EMPTY = 0,
+    TILE_GRASS = 1,
+    TILE_WALL  = 2,
+    TILE_WATER = 3,
+    TILE_SAND  = 4
+};
 
-const int TILE_GRASS = 1;
-const int TILE_WALL  = 2;
-const int TILE_WATER = 3;
-const int TILE_SAND  = 4;
+const int TILE_SIZE = 64;
 
 const int MAP_W = 30;
 const int MAP_H = 20;
@@ -114,6 +120,8 @@ public:
     TileMap(SDL_Renderer* rend);
     ~TileMap();
     bool load(const std::string& file);
+    bool loadFromFile(const std::string& path);
+    int getTileIndex(int tileType);
     void draw(const Camera& cam);
     bool isSolid(int x, int y);
     // int getMask(int x, int y);
@@ -123,8 +131,9 @@ public:
 class Board {
     public:
     Board(SDL_Renderer* rend);
+    bool collideWithMap(const SDL_Rect& rect);
     void move(int x, int y);
-    void update(int tick);
+    void update(int tick, float deltaTime);
     void clampPlayer();
     void handleEvent(const SDL_Event& ev);
     void draw();
@@ -136,8 +145,8 @@ class Board {
     Group click;  
     Group collide;
     Animation player;
-    int speedX = PLAYER_SPEED;
-    int speedY = PLAYER_SPEED;
+    float speedX = PLAYER_SPEED;
+    float speedY = PLAYER_SPEED;
     int mapWidth = 1000;
     int mapHeight = 600;
     double a = 1.1;

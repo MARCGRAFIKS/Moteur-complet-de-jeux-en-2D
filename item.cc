@@ -282,13 +282,12 @@ Board::Board(SDL_Renderer* rend) : tileMap(rend){
     a = 1.1;
     flip = SDL_FLIP_NONE;
     int w, h;
-    tileMap.load("maptile.png");
 
     SDL_GetRendererOutputSize(render, &w, &h);
     player.setRenderer(render);
     player.loadAnimation("person/JK_P_Sword__Run_", "000", ".png");
     player.setPos(128, 128);
-    player.setSize(64, 64);
+    player.setSize(48, 48);
     player.setFPS(10);
 
     gem.spawnItems(10, render);
@@ -296,12 +295,38 @@ Board::Board(SDL_Renderer* rend) : tileMap(rend){
     drawn.addRefe(&player);
 }
 
+bool Board::collideWithMap(const SDL_Rect& rect)
+{
+    int left   = rect.x + 4;
+    int right  = rect.x + rect.w -4;
+    int top    = rect.y + 4;
+    int bottom = rect.y + rect.h -4;
+
+    int tiles[4][2] = {
+        {left,  top},
+        {right, top},
+        {left,  bottom},
+        {right, bottom}
+    };
+
+    for (auto& t : tiles)
+    {
+        int tx = t[0] / TILE_SIZE;
+        int ty = t[1] / TILE_SIZE;
+
+        if (tileMap.isSolid(tx, ty))
+            return true;
+    }
+
+    return false;
+}
+
 void Board::move(int x, int y) {
     drawn.move(x, y);
     clampPlayer();
 }
 
-void Board::update(int tick) {
+void Board::update(int tick, float deltaTime) {
     // Faire suive camera au joueur
     cam.x = player.getX() - cam.w/2;
     cam.y = player.getY() - cam.h/2;
@@ -311,20 +336,30 @@ void Board::update(int tick) {
     if(cam.x > MAP_W * TILE_SIZE - cam.w) cam.x = MAP_W * TILE_SIZE - cam.w;
     if(cam.y > MAP_H * TILE_SIZE - cam.h) cam.y = MAP_H * TILE_SIZE - cam.h;
     // deplacement joueur
-    move(speedX, speedY);
+    // move(speedX, speedY);
     // collision
-     SDL_Rect p = player.getPos();
+    // réduire vitesse diagonale
+     float moveSpeed = 200.0f;
+     float sx = speedX * moveSpeed * deltaTime;
+     float sy = speedY * moveSpeed * deltaTime;
 
-    int centerX = p.x + p.w / 2;
-    int centerY = p.y + p.h / 2;
-
-    int tileX = centerX / TILE_SIZE;
-    int tileY = centerY / TILE_SIZE;
-
-    if(tileMap.isSolid(tileX, tileY)) {
-
-        player.move(-speedX, -speedY);
-    }
+     if (sx != 0 && sy != 0)
+     {
+        sx *= 0.7f;
+        sy *= 0.7f;
+     }
+    // mouvement X
+     player.move(sx, 0);
+     if (collideWithMap(player.getPos()))
+     {
+        player.move(-sx, 0);
+     }
+    // mouvement Y
+    player.move(0, sy);
+    if (collideWithMap(player.getPos()))
+     {
+       player.move(0, -sy);
+     }
     // update des groupes
     drawn.update(tick);
     click.update(tick);
@@ -333,6 +368,7 @@ void Board::update(int tick) {
 }
 
 void Board::handleEvent(const SDL_Event& ev) {
+    
     switch(ev.type) {
         case SDL_KEYDOWN:
                 switch(ev.key.keysym.sym) {
@@ -388,35 +424,8 @@ void Board::clampPlayer() {
 //////////////////:classe de tilemap///////////////////////////////
 
 TileMap::TileMap(SDL_Renderer* rend) : render(rend), tileset(nullptr) {
-   
-    int temp[MAP_H][MAP_W] = {
-                 {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2},
-                 {2, 4, 4, 4, 4, 4, 4, 4, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 4, 4, 4, 4, 1, 4, 1, 4, 4, 2}, 
-                 {2, 4, 4, 4, 2, 2, 2, 4, 4, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 4, 1, 1, 1, 2, 1, 1, 2}, 
-                 {2, 2, 2, 4, 3, 3, 3, 4, 4, 2, 2, 1, 1, 3, 3, 4, 4, 4, 4, 4, 1, 1, 1, 1, 4, 1, 2, 3, 3, 2}, 
-                 {2, 2, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 4, 4, 4, 4, 2, 2, 4, 4, 4, 4, 2, 1, 3, 2}, 
-                 {2, 1, 1, 4, 4, 4, 4, 1, 4, 2, 4, 4, 1, 1, 1, 3, 4, 4, 4, 4, 2, 4, 4, 4, 4, 2, 2, 1, 3, 2}, 
-                 {2, 1, 1, 4, 2, 2, 2, 1, 2, 2, 4, 4, 2, 2, 3, 3, 4, 4, 4, 4, 2, 4, 4, 1, 1, 2, 4, 1, 4, 2}, 
-                 {2, 4, 1, 1, 3, 3, 3, 1, 2, 4, 4, 4, 2, 3, 3, 4, 4, 1, 1, 4, 4, 1, 1, 2, 1, 2, 4, 1, 4, 2}, 
-                 {2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 3, 4, 4, 4, 1, 1, 1, 1, 4, 2, 2, 4, 1, 1, 1, 1, 2}, 
-                 {2, 4, 2, 1, 1, 1, 1, 4, 4, 4, 2, 3, 3, 3, 2, 4, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 4, 2}, 
-                 {2, 4, 2, 1, 2, 2, 2, 4, 4, 4, 2, 3, 4, 2, 2, 1, 1, 4, 4, 3, 3, 3, 3, 3, 3, 4, 4, 1, 4, 2}, 
-                 {2, 4, 1, 2, 2, 1, 2, 4, 4, 2, 2, 3, 2, 2, 1, 4, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 4, 1, 4, 2}, 
-                 {2, 4, 1, 1, 1, 1, 1, 4, 4, 2, 3, 3, 4, 1, 1, 4, 4, 1, 1, 1, 4, 4, 3, 4, 1, 1, 4, 1, 4, 2}, 
-                 {2, 4, 1, 1, 3, 3, 1, 4, 4, 2, 3, 3, 4, 1, 1, 4, 4, 4, 1, 1, 4, 4, 3, 4, 1, 1, 4, 4, 4, 2}, 
-                 {2, 4, 1, 4, 3, 1, 4, 4, 4, 2, 3, 3, 4, 1, 1, 4, 4, 4, 4, 1, 1, 4, 3, 4, 4, 1, 1, 1, 4, 2}, 
-                 {2, 4, 1, 1, 4, 1, 1, 4, 4, 2, 3, 4, 4, 1, 4, 4, 4, 4, 1, 1, 4, 4, 3, 4, 4, 4, 4, 4, 1, 2}, 
-                 {2, 4, 4, 1, 1, 4, 1, 4, 4, 3, 3, 4, 1, 1, 4, 4, 4, 4, 2, 4, 4, 3, 2, 2, 1, 4, 4, 1, 1, 2}, 
-                 {2, 4, 4, 4, 1, 1, 4, 4, 3, 3, 4, 4, 1, 4, 4, 4, 4, 4, 2, 2, 3, 3, 2, 1, 4, 1, 1, 4, 4, 2}, 
-                 {2, 4, 4, 4, 4, 1, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 4, 4, 4, 3, 3, 1, 1, 1, 4, 1, 4, 4, 4, 2}, 
-                 {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
-            };
-
-   for(int y=0; y<MAP_H; y++) {
-    for(int x=0; x<MAP_W; x++) {
-                map[y][x] = temp[y][x];
-     }
-   }
+    load("maptile.png");
+    loadFromFile("map.txt");
 }
 
 TileMap::~TileMap() {
@@ -437,6 +446,47 @@ bool TileMap::load(const std::string& file) {
     SDL_FreeSurface(surf);
 
     return tileset != nullptr;
+}
+
+bool TileMap::loadFromFile(const std::string& path)
+{
+    std::ifstream file(path);
+    if (!file.is_open())
+        return false;
+
+    std::string line;
+    int y = 0;
+
+    while (std::getline(file, line) && y < MAP_H)
+    {
+        std::stringstream ss(line);
+        int x = 0;
+        int value;
+
+        while (ss >> value && x < MAP_W)
+        {
+            map[y][x] = value;
+            x++;
+        }
+
+        y++;
+    }
+
+    return true;
+}
+
+// fonction de décalage
+int TileMap::getTileIndex(int tileType)
+{
+    switch(tileType)
+    {
+        case TILE_EMPTY: return -1;
+        case TILE_GRASS: return 0;
+        case TILE_WALL:  return 1;
+        case TILE_WATER: return 2;
+        case TILE_SAND:  return 3;
+        default: return 0;
+    }
 }
 
 void TileMap::draw(const Camera& cam) {
@@ -462,10 +512,14 @@ void TileMap::draw(const Camera& cam) {
 
         for(int x = startX; x < endX; x++) {
 
-            int tile = map[y][x];
-            if(tile <= 0)
+            // Sécurité importante (anti-crash)
+            if (y < 0 || y >= MAP_H || x < 0 || x >= MAP_W)
+                continue;
+            
+            int index = getTileIndex(map[y][x]); //décalage maintenir proprement
+            if(index <= 0)
              continue;
-            src.x = (tile-1)* TILE_SIZE;
+            src.x = index* TILE_SIZE;
             src.y = 0;
 
             dst.x = x * TILE_SIZE - cam.x;
