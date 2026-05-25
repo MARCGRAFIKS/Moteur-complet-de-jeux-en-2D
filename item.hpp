@@ -17,6 +17,12 @@ struct Camera {
 };
 
 const int TILE_SIZE = 64;
+
+const int TILE_GRASS = 1;
+const int TILE_WALL  = 2;
+const int TILE_WATER = 3;
+const int TILE_SAND  = 4;
+
 const int MAP_W = 30;
 const int MAP_H = 20;
 
@@ -110,6 +116,7 @@ public:
     bool load(const std::string& file);
     void draw(const Camera& cam);
     bool isSolid(int x, int y);
+    // int getMask(int x, int y);
 };
 
 // ajout classe de board
