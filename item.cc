@@ -125,7 +125,7 @@ bool Item::isClicked(int x, int y) const{
     return(dx*dx+dy*dy) <= (r*r); 
 }
 
-void Item::update(int tick) {
+void Item::update(int tick, float deltaTime) {
     oldTick = tick;
 }
 
@@ -162,7 +162,7 @@ bool Animation::loadAnimation(const std::string& base, std::string count, const 
     return !images.empty();
 }
 
-void Animation::update(int tick) {
+void Animation::update(int tick, float deltaTime) {
     if(tick - oldTick > desiredDelta) {
         next();
         oldTick = tick;
@@ -183,7 +183,26 @@ void Animation::next() {
     image = images[frameCount];
 }
 
-///////////////////////////////////classe groupe ///////////////////////////////:
+////////////////////////:classe d'ennemis//////////////////////////////////////
+
+Enemy::Enemy()
+{
+    dirX = 1.0;
+    dirY = 0.0;
+
+    speed = 100.0f;
+
+    setSize(48, 48);
+}
+
+void Enemy::update(int tick, float deltaTime)
+{
+    Animation::update(tick, deltaTime);
+    // Mouvement automatique
+    move(dirX*speed*deltaTime, dirY*speed*deltaTime);
+}
+
+///////////////////////////////////classe groupe ///////////////////////////////
 
 void Group::draw(const Camera& cam, SDL_RendererFlip flip) {
      std::sort(items.begin(), items.end(), [](Item*a, Item* b){
@@ -212,9 +231,9 @@ void Group::remove(Item* other) {
     items.erase(std::remove(items.begin(), items.end(), other), items.end());
 }
     
-void Group::update(int tick) {
+void Group::update(int tick, float deltaTime) {
     for(auto* item : items) {
-        item->update(tick);
+        item->update(tick, deltaTime);
     }
 }
 
@@ -234,7 +253,7 @@ void Group::spawnItems(int count, SDL_Renderer* rend) {
     }
 }
     
-// fonctionspécialisées
+// fonction spécialisées
 void Group::handleClick(int x, int y) {
     for(auto* item : items) {
         if (item->isClicked(x, y))
@@ -289,6 +308,13 @@ Board::Board(SDL_Renderer* rend) : tileMap(rend){
     player.setPos(128, 128);
     player.setSize(48, 48);
     player.setFPS(10);
+
+    auto enemy = std::make_unique<Enemy>();
+    enemy->setRenderer(render);
+    enemy->loadFromImage("terre.png");
+    enemy->setPos(300, 300);
+    enemies.addRefe(enemy.get());
+    enemies.add(std::move(enemy));
 
     gem.spawnItems(10, render);
 
@@ -361,9 +387,10 @@ void Board::update(int tick, float deltaTime) {
        player.move(0, -sy);
      }
     // update des groupes
-    drawn.update(tick);
-    click.update(tick);
-    collide.update(tick);
+    enemies.update(tick, deltaTime);
+    drawn.update(tick, deltaTime);
+    click.update(tick, deltaTime);
+    collide.update(tick, deltaTime);
     
 }
 
@@ -395,7 +422,8 @@ void Board::handleEvent(const SDL_Event& ev) {
 void Board::draw() {
     tileMap.draw(cam);
     drawn.draw(cam, flip);
-    gem.draw(cam, a);
+    enemies.draw(cam);
+    // gem.draw(cam, a);
     collide.draw(cam);
     click.draw(cam);
     a ++;
@@ -541,25 +569,3 @@ bool TileMap::isSolid(int x, int y) {
             map[y][x] == TILE_WATER    // eau
             );
 }
-
-// int TileMap::getMask(int x, int y) {
-//      int mask = 0;
-
-//     // haut
-//     if(y > 0 && map[y - 1][x] == 1)
-//         mask += 1;
-
-//     // droite
-//     if(x < MAP_W - 1 && map[y][x + 1] == 1)
-//         mask += 2;
-
-//     // bas
-//     if(y < MAP_H - 1 && map[y + 1][x] == 1)
-//         mask += 4;
-
-//     // gauche
-//     if(x > 0 && map[y][x - 1] == 1)
-//         mask += 8;
-
-//     return mask;
-// }

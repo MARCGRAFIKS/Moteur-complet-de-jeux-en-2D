@@ -46,7 +46,7 @@ class Item : public Renderer{
     void move(int x, int y);
     void draw(const Camera& cam, SDL_RendererFlip flip = SDL_FLIP_NONE);
     void draw(const Camera& cam, double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
-    virtual void update(int tick);
+    virtual void update(int tick, float deltaTime);
     void updateCercle();
     void setCercle(int x, int y, double r);
     SDL_Rect getPos();
@@ -73,13 +73,24 @@ class Animation : public Item {
     bool addImage(const std::string& file);
     bool loadAnimation(const std::string& base, std::string count, const std::string& ext);
     void next();
-    virtual void update(int tick) override;
+    virtual void update(int tick, float deltaTime) override;
     void setFPS(int FPS);
 
     private:
     int frameCount;
     int desiredDelta;
     std::vector<SDL_Texture*> images;
+};
+// ajout de la classe de ennemis
+class Enemy : public Animation {
+    private:
+    float dirX;
+    float dirY;
+    float speed;
+
+    public:
+    Enemy();
+    void update(int tick, float deltaTime) override;
 };
 
 // ajout d'une classe qui regouperait les items
@@ -90,7 +101,7 @@ class Group {
     void draw(const Camera& cam, double angle, SDL_RendererFlip flip = SDL_FLIP_NONE);
     void addRefe(Item* other);
     void remove(Item* other);
-    void update(int itck);
+    void update(int tick, float deltaTime);
     void add(std::unique_ptr<Item> item);
     void spawnItems(int count, SDL_Renderer* rend);
     // fonctionspécialisées
@@ -103,6 +114,7 @@ class Group {
     public:
     std::vector<Item*> items;
     std::vector<std::unique_ptr<Item>> gemItems;
+    
 };
 
 //Ajout de classe de map
@@ -124,7 +136,6 @@ public:
     int getTileIndex(int tileType);
     void draw(const Camera& cam);
     bool isSolid(int x, int y);
-    // int getMask(int x, int y);
 };
 
 // ajout classe de board
@@ -141,6 +152,7 @@ class Board {
     public:
     SDL_Renderer* render = nullptr;
     Group drawn; 
+    Group enemies;
     Group gem;
     Group click;  
     Group collide;
