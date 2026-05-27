@@ -220,10 +220,12 @@ void Enemy::setMap(TileMap* m)
     map = m;
 }
 
-void Enemy::update(int tick, float deltaTime)
-{
+void Enemy::update(int tick, float deltaTime){
+    // Empêcher update ennemi mort
+    if(dead)
+    return;
+    
     Animation::update(tick, deltaTime);
-
     // Mouvement automatique
     if (!target || !map)
         return;
@@ -286,11 +288,12 @@ bool Enemy::collideTile(SDL_Rect rect)
 ///////////////////////////////////classe groupe ///////////////////////////////
 
 void Group::draw(const Camera& cam, SDL_RendererFlip flip) {
-     std::sort(items.begin(), items.end(), [](Item*a, Item* b){
-      return a->z <b->z;
-     });
+     std::sort(items.begin(), items.end(), [](Item*a, Item* b){ return a->z <b->z;});
 
      for(auto* item : items) {
+        // Ne plus dessiner ennemi mort
+         if(item->isDead())
+            continue;
       item->draw(cam, flip);
      }     
 }
@@ -474,6 +477,9 @@ void Board::update(int tick, float deltaTime) {
     player.damageCooldown -= deltaTime;
     for (auto* e : enemies.getRaw())
      {
+        // sotie de ennemi est mort
+        if(e->isDead())
+         continue;
        if (player.getCollisionRect(*e))
         {
           if (player.damageCooldown <= 0)
@@ -483,6 +489,38 @@ void Board::update(int tick, float deltaTime) {
           }
         }
      } 
+    //  Update cooldown attaque
+     if(player.attackCooldown > 0)
+     {
+       player.attackCooldown -= deltaTime;
+     }
+
+     if(player.attackCooldown <= 0)
+     {
+       player.attacking = false;
+       player.alreadyHit = false;
+     }
+    //  Collision attaque vs ennemis
+    if(player.attacking)
+    {
+       SDL_Rect atk = getAttackBox();
+
+       for(auto* e : enemies.getRaw())
+       {
+           if(e->isDead())
+              continue;
+              SDL_Rect er = e->getPos();
+
+            if(SDL_HasIntersection(&atk, &er))
+           {
+               if(!player.alreadyHit)
+                {
+                  e->takeDamage(25);
+                  player.alreadyHit = true;
+                }
+           }
+        }
+    }
     // update des groupes
     enemies.update(tick, deltaTime);
     drawn.update(tick, deltaTime);
@@ -509,6 +547,11 @@ void Board::handleEvent(const SDL_Event& ev) {
                     case SDLK_DOWN: speedY = 1; break;
                     case SDLK_LEFT: speedX =-1; flip = SDL_FLIP_HORIZONTAL; break;
                     case SDLK_RIGHT: speedX = 1; flip = SDL_FLIP_NONE; break;
+                    case SDLK_SPACE:
+                    if(player.attackCooldown <= 0){
+                        player.attacking = true; 
+                        player.attackCooldown = 0.35f;
+                    } break;
                 }
         break;
         case SDL_KEYUP:
@@ -575,6 +618,29 @@ void Board::clampPlayer() {
         p.y = MAP_H * TILE_SIZE - p.h;
 
     player.setPos(p.x, p.y);
+}
+
+SDL_Rect Board::getAttackBox()
+{
+    SDL_Rect p = player.getPos();
+
+    SDL_Rect box;
+
+    box.w = 40;
+    box.h = 40;
+
+    box.y = p.y + 4;
+
+    if(flip == SDL_FLIP_NONE)
+    {
+        box.x = p.x + p.w;
+    }
+    else
+    {
+        box.x = p.x - box.w;
+    }
+
+    return box;
 }
 
 

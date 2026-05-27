@@ -40,6 +40,7 @@ const int MAP_W = 30;
 const int MAP_H = 20;
 
 const int PLAYER_SPEED = 4;
+static bool printed = false;
 
 void init_Item();
 void quit_Item();
@@ -68,9 +69,13 @@ class Item : public Renderer{
     bool getCollisionRect(const Item& other) const;
     bool isClicked(int x, int y) const;
     int z = 0;
-    float damageCooldown = 0;
+    float damageCooldown = 0.0f;
+    bool attacking = false;
+    bool alreadyHit = false;
+    float attackCooldown = 0.0f;
     bool dead = false;
     void takeDamage(int dmg);
+    bool isAttacking() const {return attacking;}
     bool isDead() const { return dead; }
     void setDead(bool v){dead = v;}
 
@@ -174,8 +179,9 @@ class Board {
     void move(int x, int y);
     void update(int tick, float deltaTime);
     void clampPlayer();
+    SDL_Rect getAttackBox();
     void handleEvent(const SDL_Event& ev);
-    void Board::resetGame();
+    void resetGame();
     void draw();
 
     public:
@@ -195,6 +201,5 @@ class Board {
     Camera cam;
     TileMap tileMap;
     GameState state = PLAYING;
-    static bool printed = false;
 };
 
