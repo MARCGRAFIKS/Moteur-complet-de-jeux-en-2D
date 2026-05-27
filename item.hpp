@@ -81,7 +81,7 @@ class Item : public Renderer{
     bool alreadyHit = false;
     float attackCooldown = 0.0f;
     bool dead = false;
-    void takeDamage(int dmg);
+    virtual void takeDamage(int dmg);
     bool isAttacking() const {return attacking;}
     bool isDead() const { return dead; }
     void setDead(bool v){dead = v;}
@@ -89,13 +89,8 @@ class Item : public Renderer{
     float knockbackX = 0.0f;
     float knockbackY = 0.0f;
     float knockbackTimer = 0.0f;
-    // Fonction applyKnockback
-    void applyKnockback(float x, float y, float duration)
-    {
-       knockbackX = x;
-       knockbackY = y;
-       knockbackTimer = duration;
-    }
+    bool hitFlash = false;
+    float flashTimer = 0;
 
     protected:
     Item* target = nullptr;
@@ -132,6 +127,11 @@ class Enemy : public Animation {
     EnemyState state = PATROL;
     // Vision range
     float visionRange = 200.0f;
+    float knockX = 0;
+    float knockY = 0;
+    float knockTimer = 0;
+    bool hitFlash = false;
+    float flashTimer = 0;
     // on donne juste une référence (pointeur) vers celle de Board
     TileMap* map = nullptr; // référence vers la map
 
@@ -140,6 +140,9 @@ class Enemy : public Animation {
     void setMap(TileMap* m);  //  injection de la map
     void update(int tick, float deltaTime) override;
     bool collideTile(SDL_Rect rect);
+    // Fonction applyKnockback
+    void applyKnockback(float fromX, float fromY);
+    void takeDamage(int dmg)override;
 };
 
 // ajout d'une classe qui regouperait les items
@@ -223,5 +226,7 @@ class Board {
     Camera cam;
     TileMap tileMap;
     GameState state = PLAYING;
+    // Hit stop
+    float hitStop = 0;
 };
 

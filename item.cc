@@ -47,7 +47,13 @@ void Item::draw(const Camera& cam, SDL_RendererFlip flip) {
             pos.w, 
             pos.h
         };
-    
+        
+        if(hitFlash)
+          {
+           SDL_SetTextureColorMod(image, 255, 0, 0);
+          }else{
+           SDL_SetTextureColorMod(image, 255, 255, 255);
+          }
 
         SDL_RenderCopyEx(render, image, nullptr, &screenPos, 0, nullptr, flip);
     }
@@ -61,6 +67,12 @@ void Item::draw(const Camera& cam, double angle, SDL_RendererFlip flip) {
             pos.w, 
             pos.h
         };
+    
+         if(hitFlash){
+           SDL_SetTextureColorMod(image, 255, 0, 0);
+        }else{
+           SDL_SetTextureColorMod(image, 255, 255, 255);
+        }
 
         SDL_RenderCopyEx(render, image, nullptr, &screenPos, angle, nullptr, flip);
     }
@@ -226,19 +238,40 @@ void Enemy::setMap(TileMap* m)
     map = m;
 }
 
-void Enemy::update(int tick, float deltaTime){
-    // Comme Enemy::update() override Item::update()
-    Item::update(tick, deltaTime);
+void Enemy::update(int tick, float deltaTime)
+{
     Animation::update(tick, deltaTime);
-     // Empêcher update ennemi mort
-       if(dead){
+
+    if(dead)
+    {
         state = DEAD;
         return;
-       }
-    // Mouvement automatique
-    if (!target || !map){
-         return;
     }
+
+    // FLASH
+    if(flashTimer > 0)
+    {
+        flashTimer -= deltaTime;
+
+        if(flashTimer <= 0)
+        {
+            hitFlash = false;
+        }
+    }
+
+    // KNOCKBACK
+    if(knockTimer > 0)
+    {
+        move(knockX * deltaTime,
+             knockY * deltaTime);
+
+        knockTimer -= deltaTime;
+
+        return;
+    }
+
+    if(!target || !map)
+        return;
 
     float ex = getX();
     float ey = getY();
@@ -251,7 +284,7 @@ void Enemy::update(int tick, float deltaTime){
 
     float dist = sqrt(dx*dx + dy*dy);
 
-    // détection joueur
+    // FSM
     if(dist < visionRange)
     {
         state = CHASE;
@@ -261,7 +294,7 @@ void Enemy::update(int tick, float deltaTime){
         state = PATROL;
     }
 
-    // poursuite
+    // CHASE
     if(state == CHASE)
     {
         float len = dist;
@@ -283,7 +316,7 @@ void Enemy::update(int tick, float deltaTime){
         }
     }
 
-    // patrouille
+    // PATROL
     else if(state == PATROL)
     {
         move(dirX * speed * 0.5f * deltaTime,
@@ -295,7 +328,6 @@ void Enemy::update(int tick, float deltaTime){
             dirY = -dirY;
         }
 
-        // random direction
         if(rand() % 1000 < 5)
         {
             dirX = rand() % 3 - 1;
@@ -329,6 +361,42 @@ bool Enemy::collideTile(SDL_Rect rect)
     }
 
     return false;
+}
+
+void Enemy::applyKnockback(float fromX, float fromY){
+    float dx = getX() - fromX;
+    float dy = getY() - fromY;
+
+    float len = sqrt(dx*dx + dy*dy);
+
+    if(len == 0)
+        return;
+
+    dx /= len;
+    dy /= len;
+
+    knockX = dx * 200.0f;
+    knockY = dy * 200.0f;
+
+    knockTimer = 0.15f;
+}
+
+void Enemy::takeDamage(int dmg)
+{
+    if(dead)
+        return;
+
+    hp -= dmg;
+
+    hitFlash = true;
+    flashTimer = 0.1f;
+
+    if(hp <= 0)
+    {
+        hp = 0;
+        dead = true;
+        state = DEAD;
+    }
 }
 
 ///////////////////////////////////classe groupe ///////////////////////////////
@@ -557,28 +625,18 @@ void Board::update(int tick, float deltaTime) {
               continue;
               SDL_Rect er = e->getPos();
 
-            if(SDL_HasIntersection(&atk, &er))
-           {
-               if(!player.alreadyHit)
+           if(SDL_HasIntersection(&atk, &er)){
+              if(!player.alreadyHit)
                 {
                   e->takeDamage(25);
-                  player.alreadyHit = true;
+                //   comme ennemi n'a pas de applyKnokback
+                // on va Cast e vers Enemy*
+                 Enemy* enemy = static_cast<Enemy*>(e);
+                  enemy->applyKnockback(player.getX(), player.getY());
+                   hitStop = 0.05f;
+                   player.alreadyHit = true;
                 }
-                // Knockback sur attaque
-                float force = 250.0f;
-
-               float dx = e->getX() - player.getX();
-               float dy = e->getY() - player.getY();
-
-               float len = sqrt(dx*dx + dy*dy);
-
-              if(len > 0){
-                 dx /= len;
-                  dy /= len;
-                }
-
-               e->applyKnockback(dx * force,dy * force, 0.15f);
-           }
+            }
         }
     }
     // update des groupes
@@ -595,7 +653,12 @@ void Board::update(int tick, float deltaTime) {
      if(state != PLAYING)
      {
        return;
-     } 
+     }
+    //  Freeze gameplay 
+     if(hitStop > 0){
+       hitStop -= deltaTime;
+       return;
+     }
 }
 
 void Board::handleEvent(const SDL_Event& ev) {
