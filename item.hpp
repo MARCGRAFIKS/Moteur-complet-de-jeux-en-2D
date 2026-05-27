@@ -27,6 +27,13 @@ enum TileType {
     TILE_SAND  = 4
 };
 
+enum GameState
+{
+    MENU,
+    PLAYING,
+    GAME_OVER
+};
+
 const int TILE_SIZE = 64;
 
 const int MAP_W = 30;
@@ -64,6 +71,8 @@ class Item : public Renderer{
     float damageCooldown = 0;
     bool dead = false;
     void takeDamage(int dmg);
+    bool isDead() const { return dead; }
+    void setDead(bool v){dead = v;}
 
     protected:
     Item* target = nullptr;
@@ -166,6 +175,7 @@ class Board {
     void update(int tick, float deltaTime);
     void clampPlayer();
     void handleEvent(const SDL_Event& ev);
+    void Board::resetGame();
     void draw();
 
     public:
@@ -184,5 +194,7 @@ class Board {
     SDL_RendererFlip flip; 
     Camera cam;
     TileMap tileMap;
+    GameState state = PLAYING;
+    static bool printed = false;
 };
 

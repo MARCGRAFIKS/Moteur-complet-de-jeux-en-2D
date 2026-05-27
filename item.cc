@@ -488,7 +488,16 @@ void Board::update(int tick, float deltaTime) {
     drawn.update(tick, deltaTime);
     click.update(tick, deltaTime);
     collide.update(tick, deltaTime);
-    
+    // simple version (freeze jeu)
+    if(player.isDead() && state == PLAYING)
+     {
+        state = GAME_OVER;
+     } 
+    // Bloquer gameplay si GAME OVER
+     if(state != PLAYING)
+     {
+       return;
+     } 
 }
 
 void Board::handleEvent(const SDL_Event& ev) {
@@ -514,6 +523,25 @@ void Board::handleEvent(const SDL_Event& ev) {
         click.handleClick(ev.button.x, ev.button.y);
         break;
     }
+    if(state == GAME_OVER)
+    {
+    if(ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_r)
+    {
+        resetGame();
+    }
+       return;
+    }
+}
+
+void Board::resetGame(){
+    state = PLAYING;
+    printed = false;
+    player.setPos(128, 128);
+    player.setHP(100);
+    player.setDead(false);
+
+    speedX = 0;
+    speedY = 0;
 }
     
 void Board::draw() {
@@ -524,6 +552,10 @@ void Board::draw() {
     collide.draw(cam);
     click.draw(cam);
     a ++;
+    if(state == GAME_OVER && !printed){
+       std::cout << "GAME OVER - press R to restart\n";
+       printed = true;
+    }
 }
 
 void Board::clampPlayer() {
