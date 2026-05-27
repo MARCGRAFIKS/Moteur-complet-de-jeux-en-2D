@@ -135,6 +135,20 @@ void Item::update(int tick, float deltaTime) {
     oldTick = tick;
 }
 
+
+void Item::takeDamage(int dmg)
+{
+    if (dead) return;
+
+    hp -= dmg;
+
+    if (hp <= 0)
+    {
+        hp = 0;
+        dead = true;
+    }
+}
+
 //////////////////////// La clsse de l'animation ///////////////
 
  Animation::Animation() : frameCount(0), desiredDelta(0) {}
@@ -356,7 +370,7 @@ void Group::move(int x, int y) {
     for(auto* item : items) {
         item->move(x, y);
     }
-}
+}  
 
 ///////////////////////Board////////////////////////////
 
@@ -455,6 +469,20 @@ void Board::update(int tick, float deltaTime) {
      {
        player.move(0, -sy);
      }
+
+    // attacke ennemis et player
+    player.damageCooldown -= deltaTime;
+    for (auto* e : enemies.getRaw())
+     {
+       if (player.getCollisionRect(*e))
+        {
+          if (player.damageCooldown <= 0)
+          {
+              player.takeDamage(10);
+              player.damageCooldown = 1.0f;
+          }
+        }
+     } 
     // update des groupes
     enemies.update(tick, deltaTime);
     drawn.update(tick, deltaTime);

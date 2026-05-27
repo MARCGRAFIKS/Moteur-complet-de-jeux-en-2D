@@ -55,13 +55,19 @@ class Item : public Renderer{
     Cercle getCentre() const;
     int getX();
     int getY();
+    int getHP() const { return hp; }
+    void setHP(int v) { hp = v; }
     bool getCollision(const Item& other) const;
     bool getCollisionRect(const Item& other) const;
     bool isClicked(int x, int y) const;
     int z = 0;
+    float damageCooldown = 0;
+    bool dead = false;
+    void takeDamage(int dmg);
 
     protected:
     Item* target = nullptr;
+    int hp = 100;
     SDL_Rect pos;
     Cercle centre;
     int oldTick;
@@ -117,6 +123,12 @@ class Group {
     // ajout du filtres 
     std::vector<Item*> getVisible();
     void move(int x, int y);
+    // Collision Enemy / Player
+    // permet une connection entre les pointeurs
+    std::vector<Item*> getRaw()
+    {
+       return items;
+    }
 
     public:
     std::vector<Item*> items;
