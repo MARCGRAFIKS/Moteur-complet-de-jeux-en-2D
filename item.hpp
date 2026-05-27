@@ -34,6 +34,13 @@ enum GameState
     GAME_OVER
 };
 
+enum EnemyState
+{
+    PATROL,
+    CHASE,
+    DEAD
+};
+
 const int TILE_SIZE = 64;
 
 const int MAP_W = 30;
@@ -78,6 +85,17 @@ class Item : public Renderer{
     bool isAttacking() const {return attacking;}
     bool isDead() const { return dead; }
     void setDead(bool v){dead = v;}
+    // Variables knockback
+    float knockbackX = 0.0f;
+    float knockbackY = 0.0f;
+    float knockbackTimer = 0.0f;
+    // Fonction applyKnockback
+    void applyKnockback(float x, float y, float duration)
+    {
+       knockbackX = x;
+       knockbackY = y;
+       knockbackTimer = duration;
+    }
 
     protected:
     Item* target = nullptr;
@@ -110,6 +128,10 @@ class Enemy : public Animation {
     float dirX;
     float dirY;
     float speed;
+    // EnemyState
+    EnemyState state = PATROL;
+    // Vision range
+    float visionRange = 200.0f;
     // on donne juste une référence (pointeur) vers celle de Board
     TileMap* map = nullptr; // référence vers la map
 

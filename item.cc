@@ -133,6 +133,12 @@ bool Item::isClicked(int x, int y) const{
 
 void Item::update(int tick, float deltaTime) {
     oldTick = tick;
+    if(knockbackTimer > 0)
+    {
+       move(knockbackX * deltaTime, knockbackY * deltaTime);
+
+       knockbackTimer -= deltaTime;
+    }
 }
 
 
@@ -221,14 +227,18 @@ void Enemy::setMap(TileMap* m)
 }
 
 void Enemy::update(int tick, float deltaTime){
-    // Empêcher update ennemi mort
-    if(dead)
-    return;
-    
+    // Comme Enemy::update() override Item::update()
+    Item::update(tick, deltaTime);
     Animation::update(tick, deltaTime);
-    // Mouvement automatique
-    if (!target || !map)
+     // Empêcher update ennemi mort
+       if(dead){
+        state = DEAD;
         return;
+       }
+    // Mouvement automatique
+    if (!target || !map){
+         return;
+    }
 
     float ex = getX();
     float ey = getY();
@@ -236,26 +246,62 @@ void Enemy::update(int tick, float deltaTime){
     float px = target->getX();
     float py = target->getY();
 
-    float vx = px - ex;
-    float vy = py - ey;
+    float dx = px - ex;
+    float dy = py - ey;
 
-    float len = std::sqrt(vx * vx + vy * vy);
-     if (len > 5.0f)
+    float dist = sqrt(dx*dx + dy*dy);
+
+    // détection joueur
+    if(dist < visionRange)
     {
-        vx /= len;
-        vy /= len;
+        state = CHASE;
+    }
+    else
+    {
+        state = PATROL;
+    }
 
-        float dx = vx * speed * deltaTime;
-        float dy = vy * speed * deltaTime;
+    // poursuite
+    if(state == CHASE)
+    {
+        float len = dist;
 
-        move(dx, dy);
-
-        if (collideTile(getPos()))
+        if(len > 0)
         {
-            move(-dx, -dy);
+            dx /= len;
+            dy /= len;
+        }
+
+        float vx = dx * speed * deltaTime;
+        float vy = dy * speed * deltaTime;
+
+        move(vx, vy);
+
+        if(collideTile(getPos()))
+        {
+            move(-vx, -vy);
         }
     }
-    
+
+    // patrouille
+    else if(state == PATROL)
+    {
+        move(dirX * speed * 0.5f * deltaTime,
+             dirY * speed * 0.5f * deltaTime);
+
+        if(collideTile(getPos()))
+        {
+            dirX = -dirX;
+            dirY = -dirY;
+        }
+
+        // random direction
+        if(rand() % 1000 < 5)
+        {
+            dirX = rand() % 3 - 1;
+            dirY = rand() % 3 - 1;
+        }
+    }
 }
 
 bool Enemy::collideTile(SDL_Rect rect)
@@ -518,6 +564,20 @@ void Board::update(int tick, float deltaTime) {
                   e->takeDamage(25);
                   player.alreadyHit = true;
                 }
+                // Knockback sur attaque
+                float force = 250.0f;
+
+               float dx = e->getX() - player.getX();
+               float dy = e->getY() - player.getY();
+
+               float len = sqrt(dx*dx + dy*dy);
+
+              if(len > 0){
+                 dx /= len;
+                  dy /= len;
+                }
+
+               e->applyKnockback(dx * force,dy * force, 0.15f);
            }
         }
     }
@@ -566,14 +626,13 @@ void Board::handleEvent(const SDL_Event& ev) {
         click.handleClick(ev.button.x, ev.button.y);
         break;
     }
-    if(state == GAME_OVER)
-    {
-    if(ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_r)
-    {
-        resetGame();
-    }
-       return;
-    }
+    if(state == GAME_OVER) {
+       if(ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_r)
+       {
+          resetGame();
+       }
+         return;
+     }
 }
 
 void Board::resetGame(){
