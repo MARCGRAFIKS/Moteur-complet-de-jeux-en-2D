@@ -285,14 +285,21 @@ void Enemy::update(int tick, float deltaTime)
     float dist = sqrt(dx*dx + dy*dy);
 
     // FSM
+    bool canSee = false;
+
     if(dist < visionRange)
     {
-        state = CHASE;
+       canSee = hasLineOfSight(target);
     }
-    else
-    {
-        state = PATROL;
-    }
+
+    if(canSee)
+     {
+       state = CHASE;
+     }
+     else
+     {
+       state = PATROL;
+     }
 
     // CHASE
     if(state == CHASE)
@@ -330,8 +337,11 @@ void Enemy::update(int tick, float deltaTime)
 
         if(rand() % 1000 < 5)
         {
-            dirX = rand() % 3 - 1;
-            dirY = rand() % 3 - 1;
+            // pour éviter ennemi immobile lorsqu'on 0,0
+            do{
+               dirX = rand() % 3 - 1;
+               dirY = rand() % 3 - 1;
+              }while(dirX == 0 && dirY == 0);
         }
     }
 }
@@ -361,6 +371,47 @@ bool Enemy::collideTile(SDL_Rect rect)
     }
 
     return false;
+}
+
+bool Enemy::hasLineOfSight(Item* target)
+{
+    if(!target || !map)
+        return false;
+
+    float x1 = getX() + getPos().w / 2;
+    float y1 = getY() + getPos().h / 2;
+
+    float x2 = target->getX() + target->getPos().w / 2;
+    float y2 = target->getY() + target->getPos().h / 2;
+
+    float dx = x2 - x1;
+    float dy = y2 - y1;
+
+    float distance = sqrt(dx * dx + dy * dy);
+
+    // nombre d'échantillons
+    int steps = distance / 8.0f;
+
+    if(steps <= 0)
+        return true;
+
+    for(int i = 0; i <= steps; i++)
+    {
+        float t = (float)i / steps;
+
+        float x = x1 + dx * t;
+        float y = y1 + dy * t;
+
+        int tx = (int)x / TILE_SIZE;
+        int ty = (int)y / TILE_SIZE;
+
+        if(map->isSolid(tx, ty))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Enemy::applyKnockback(float fromX, float fromY){
@@ -397,6 +448,7 @@ void Enemy::takeDamage(int dmg)
         dead = true;
         state = DEAD;
     }
+    std::cout << "HIT FLASH ON\n";
 }
 
 ///////////////////////////////////classe groupe ///////////////////////////////

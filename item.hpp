@@ -140,6 +140,8 @@ class Enemy : public Animation {
     void setMap(TileMap* m);  //  injection de la map
     void update(int tick, float deltaTime) override;
     bool collideTile(SDL_Rect rect);
+    //aycasting presque sans modifier le reste
+    bool hasLineOfSight(Item* target);
     // Fonction applyKnockback
     void applyKnockback(float fromX, float fromY);
     void takeDamage(int dmg)override;
