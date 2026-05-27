@@ -1,5 +1,6 @@
 #include "item.hpp"
 #include <SDL_Image.h>
+#include <cmath>
 
 void init_Item(){
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -77,6 +78,11 @@ SDL_Rect Item::getPos() {
     
 Cercle Item::getCentre() const{
     return centre;
+}
+
+void Item::setTarget(Item* t)
+{
+    target = t;
 }
 
 int Item::getX() {
@@ -195,11 +201,72 @@ Enemy::Enemy()
     setSize(48, 48);
 }
 
+void Enemy::setMap(TileMap* m)
+{
+    map = m;
+}
+
 void Enemy::update(int tick, float deltaTime)
 {
     Animation::update(tick, deltaTime);
+
     // Mouvement automatique
-    move(dirX*speed*deltaTime, dirY*speed*deltaTime);
+    if (!target || !map)
+        return;
+
+    float ex = getX();
+    float ey = getY();
+
+    float px = target->getX();
+    float py = target->getY();
+
+    float vx = px - ex;
+    float vy = py - ey;
+
+    float len = std::sqrt(vx * vx + vy * vy);
+     if (len > 5.0f)
+    {
+        vx /= len;
+        vy /= len;
+
+        float dx = vx * speed * deltaTime;
+        float dy = vy * speed * deltaTime;
+
+        move(dx, dy);
+
+        if (collideTile(getPos()))
+        {
+            move(-dx, -dy);
+        }
+    }
+    
+}
+
+bool Enemy::collideTile(SDL_Rect rect)
+{
+    int left   = rect.x + 4;
+    int right  = rect.x + rect.w - 4;
+
+    int top    = rect.y + 4;
+    int bottom = rect.y + rect.h - 4;
+
+    int points[4][2] = {
+        {left, top},
+        {right, top},
+        {left, bottom},
+        {right, bottom}
+    };
+
+    for(auto& p : points)
+    {
+        int tx = p[0] / TILE_SIZE;
+        int ty = p[1] / TILE_SIZE;
+
+        if(map->isSolid(tx, ty))
+            return true;
+    }
+
+    return false;
 }
 
 ///////////////////////////////////classe groupe ///////////////////////////////
@@ -313,6 +380,8 @@ Board::Board(SDL_Renderer* rend) : tileMap(rend){
     enemy->setRenderer(render);
     enemy->loadFromImage("terre.png");
     enemy->setPos(300, 300);
+    enemy->setMap(&tileMap);
+    enemy->setTarget(&player);
     enemies.addRefe(enemy.get());
     enemies.add(std::move(enemy));
 

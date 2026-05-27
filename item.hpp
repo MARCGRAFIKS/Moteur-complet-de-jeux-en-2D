@@ -36,6 +36,7 @@ const int PLAYER_SPEED = 4;
 
 void init_Item();
 void quit_Item();
+class TileMap; // déclaration anticipée
 
 class Item : public Renderer{
     public:
@@ -49,6 +50,7 @@ class Item : public Renderer{
     virtual void update(int tick, float deltaTime);
     void updateCercle();
     void setCercle(int x, int y, double r);
+    void setTarget(Item* t);
     SDL_Rect getPos();
     Cercle getCentre() const;
     int getX();
@@ -59,6 +61,7 @@ class Item : public Renderer{
     int z = 0;
 
     protected:
+    Item* target = nullptr;
     SDL_Rect pos;
     Cercle centre;
     int oldTick;
@@ -87,10 +90,14 @@ class Enemy : public Animation {
     float dirX;
     float dirY;
     float speed;
+    // on donne juste une référence (pointeur) vers celle de Board
+    TileMap* map = nullptr; // référence vers la map
 
     public:
     Enemy();
+    void setMap(TileMap* m);  //  injection de la map
     void update(int tick, float deltaTime) override;
+    bool collideTile(SDL_Rect rect);
 };
 
 // ajout d'une classe qui regouperait les items
