@@ -136,6 +136,7 @@ class Enemy : public Animation {
     float knockTimer = 0;
     bool hitFlash = false;
     float flashTimer = 0;
+    float stunTimer = 0;
     // on donne juste une référence (pointeur) vers celle de Board
     TileMap* map = nullptr; // référence vers la map
 

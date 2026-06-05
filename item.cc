@@ -48,14 +48,14 @@ void Item::draw(const Camera& cam, SDL_RendererFlip flip) {
             pos.h
         };
         
-        if(hitFlash)
-          {
-           SDL_SetTextureColorMod(image, 255, 0, 0);
-          } else if(attacking) {
-           SDL_SetTextureColorMod(image, 255, 200, 200); // léger tint pour montrer l'attaque
-          }else{
-           SDL_SetTextureColorMod(image, 255, 255, 255);
-          }
+        if(flashTimer > 0){
+          if((int)(flashTimer * 100) % 2 == 0)
+             SDL_SetTextureColorMod(image, 255, 255, 255);
+          else
+             SDL_SetTextureColorMod(image, 255, 80, 80);
+        }else{
+          SDL_SetTextureColorMod(image, 255, 255, 255);
+        }
 
         SDL_RenderCopyEx(render, image, nullptr, &screenPos, 0, nullptr, flip);
     }
@@ -70,13 +70,14 @@ void Item::draw(const Camera& cam, double angle, SDL_RendererFlip flip) {
             pos.h
         };
     
-         if(hitFlash){
-           SDL_SetTextureColorMod(image, 255, 0, 0);
-        } else if(attacking) {
-           SDL_SetTextureColorMod(image, 255, 200, 200); // léger tint pour montrer l'attaque
-        }else{
-           SDL_SetTextureColorMod(image, 255, 255, 255);
-        }
+         if(flashTimer > 0){
+          if((int)(flashTimer * 100) % 2 == 0)
+             SDL_SetTextureColorMod(image, 255, 255, 255);
+          else
+             SDL_SetTextureColorMod(image, 255, 80, 80);
+           }else{
+          SDL_SetTextureColorMod(image, 255, 255, 255);
+         }
 
         SDL_RenderCopyEx(render, image, nullptr, &screenPos, angle, nullptr, flip);
     }
@@ -251,6 +252,11 @@ void Enemy::update(int tick, float deltaTime)
         state = DEAD;
         return;
     }
+    // hitStop
+    if(stunTimer > 0){
+    stunTimer -= deltaTime;
+    return;
+    }
 
     // FLASH
     if(flashTimer > 0)
@@ -266,11 +272,8 @@ void Enemy::update(int tick, float deltaTime)
     // KNOCKBACK
     if(knockTimer > 0)
     {
-        move(knockX * deltaTime,
-             knockY * deltaTime);
-
+        move(knockX * deltaTime, knockY * deltaTime);
         knockTimer -= deltaTime;
-
         return;
     }
 
@@ -445,7 +448,7 @@ void Enemy::takeDamage(int dmg)
 
     hitFlash = true;
     flashTimer = 0.1f;
-
+    stunTimer = 0.2f;
     if(hp <= 0)
     {
         hp = 0;
@@ -635,6 +638,14 @@ void Board::move(int x, int y) {
 }
 
 void Board::update(int tick, float deltaTime) {
+     //  Freeze gameplay 
+    float realDeltaTime = deltaTime;
+    float timeScale = 1.0f; 
+     if(hitStop > 0){
+       hitStop -= realDeltaTime;
+       timeScale = 0.0f;;
+     }
+    deltaTime *= timeScale;
     // Faire suive camera au joueur
     cam.x = player.getX() - cam.w/2;
     cam.y = player.getY() - cam.h/2;
@@ -718,13 +729,9 @@ void Board::update(int tick, float deltaTime) {
    }
 //    supprétion d'ennims
     projectiles.erase(
-    std::remove_if(
-        projectiles.begin(),
-        projectiles.end(),
-        [](const auto& p)
-        {
+    std::remove_if(projectiles.begin(), projectiles.end(), [](const auto& p) {
             return !p->isAlive();
-        }),
+    }),
     projectiles.end()
 );
     // attacke ennemis et player
@@ -801,11 +808,6 @@ void Board::update(int tick, float deltaTime) {
     // Bloquer gameplay si GAME OVER
      if(state != PLAYING)
      {
-       return;
-     }
-    //  Freeze gameplay 
-     if(hitStop > 0){
-       hitStop -= deltaTime;
        return;
      }
 }
