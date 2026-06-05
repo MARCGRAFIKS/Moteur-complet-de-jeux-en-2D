@@ -42,7 +42,7 @@ void Item::move(int x, int y) {
 void Item::draw(const Camera& cam, SDL_RendererFlip flip) {
     if(image!=nullptr) {
         SDL_Rect screenPos = {
-            pos.x - cam.x,
+            pos.x - cam.x + (attacking ? 10 : 0), // décalage si attaque
             pos.y - cam.y,
             pos.w, 
             pos.h
@@ -51,6 +51,8 @@ void Item::draw(const Camera& cam, SDL_RendererFlip flip) {
         if(hitFlash)
           {
            SDL_SetTextureColorMod(image, 255, 0, 0);
+          } else if(attacking) {
+           SDL_SetTextureColorMod(image, 255, 200, 200); // léger tint pour montrer l'attaque
           }else{
            SDL_SetTextureColorMod(image, 255, 255, 255);
           }
@@ -70,6 +72,8 @@ void Item::draw(const Camera& cam, double angle, SDL_RendererFlip flip) {
     
          if(hitFlash){
            SDL_SetTextureColorMod(image, 255, 0, 0);
+        } else if(attacking) {
+           SDL_SetTextureColorMod(image, 255, 200, 200); // léger tint pour montrer l'attaque
         }else{
            SDL_SetTextureColorMod(image, 255, 255, 255);
         }
@@ -666,8 +670,11 @@ void Board::update(int tick, float deltaTime) {
        player.alreadyHit = false;
      }
     //  Collision attaque vs ennemis
-    if(player.attacking)
-    {
+    if(player.attacking){
+       player.attackTimer -= deltaTime;
+       float elapsed = player.attackDuration - player.attackTimer;
+
+       if(elapsed >= player.hitActiveTime && !player.alreadyHit) { 
        SDL_Rect atk = getAttackBox();
 
        for(auto* e : enemies.getRaw())
@@ -688,6 +695,12 @@ void Board::update(int tick, float deltaTime) {
                    player.alreadyHit = true;
                 }
             }
+        }
+        }
+        if(player.attackTimer <= 0) {
+        player.attacking = false;
+        player.attackTimer = 0;
+        player.alreadyHit = false;
         }
     }
     // update des groupes

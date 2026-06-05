@@ -91,6 +91,10 @@ class Item : public Renderer{
     float knockbackTimer = 0.0f;
     bool hitFlash = false;
     float flashTimer = 0;
+    // attack moment
+    float attackTimer = 0;
+    float attackDuration = 0.35f;
+    float hitActiveTime  = 0.15f;
 
     protected:
     Item* target = nullptr;
