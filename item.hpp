@@ -171,6 +171,22 @@ public:
     void kill() { alive = false; }
 };
 
+// ////////////////////////////classe de particule//////////////////////
+
+class Particle : public Item
+{
+private:
+    float vx, vy;
+    float life;
+    float maxLife;
+
+public:
+    Particle(float x, float y, float vx, float vy);
+    void update(int tick, float deltaTime) override;
+    bool isAlive() const { return life > 0; }
+    void draw(const Camera& cam);
+};
+
 // ajout d'une classe qui regouperait les items
 
 class Group {
@@ -198,7 +214,6 @@ class Group {
     public:
     std::vector<Item*> items;
     std::vector<std::unique_ptr<Item>> gemItems;
-    
 };
 
 //Ajout de classe de map
@@ -256,5 +271,6 @@ class Board {
     float hitStop = 0;
     // tir de projectille
     std::vector<std::unique_ptr<Projectile>> projectiles;
+    std::vector<std::unique_ptr<Particle>> particles;
 };
 

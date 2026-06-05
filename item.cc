@@ -484,6 +484,31 @@ void Projectile::update(int tick, float deltaTime)
         alive = false;
 }
 
+///////////////////////////////////classe de particule//////////////////////////
+Particle::Particle(float x, float y, float vx, float vy) {
+    setPos(x, y);
+    setSize(4, 4);
+
+    this->vx = vx;
+    this->vy = vy;
+
+    life = 0.3f;
+    maxLife = life;
+}
+
+void Particle::update(int tick, float deltaTime) {
+    move(vx * deltaTime, vy * deltaTime);
+    life -= deltaTime;
+}
+
+void Particle::draw(const Camera& cam) {
+    SDL_Rect r = {getX() - cam.x, getY() - cam.y, 12, 12};
+    float alpha = life / maxLife;
+    SDL_SetTextureColorMod(image, 255 * alpha, 255 * alpha, 255 * alpha);
+    SDL_SetRenderDrawColor(render,255,0,0,255);
+    SDL_RenderFillRect(render,&r);
+}
+
 ///////////////////////////////////classe groupe ///////////////////////////////
 
 void Group::draw(const Camera& cam, SDL_RendererFlip flip) {
@@ -776,14 +801,19 @@ void Board::update(int tick, float deltaTime) {
               SDL_Rect er = e->getPos();
 
            if(SDL_HasIntersection(&atk, &er)){
-              if(!player.alreadyHit)
-                {
+              if(!player.alreadyHit) {
                   e->takeDamage(25);
                 //   comme ennemi n'a pas de applyKnokback
                 // on va Cast e vers Enemy*
                  Enemy* enemy = static_cast<Enemy*>(e);
                   enemy->applyKnockback(player.getX(), player.getY());
                    hitStop = 0.05f;
+                   for(int i = 0; i < 6; i++){
+                  float vx = (rand() % 200 - 100);
+                  float vy = (rand() % 200 - 100);
+
+                  particles.push_back(std::make_unique<Particle>(e->getX() + 24, e->getY() + 24, vx, vy));
+                 }
                    player.alreadyHit = true;
                 }
             }
@@ -810,6 +840,17 @@ void Board::update(int tick, float deltaTime) {
      {
        return;
      }
+    //  paticule
+    for(auto& p : particles){
+    p->update(tick, deltaTime);
+    }
+    //Suppression de particule
+    particles.erase(std::remove_if(particles.begin(), particles.end(), [](const std::unique_ptr<Particle>& p)
+    {
+         return !p->isAlive();
+    }),
+    particles.end()
+   );
 }
 
 void Board::handleEvent(const SDL_Event& ev) {
@@ -881,9 +922,8 @@ void Board::resetGame(){
 void Board::draw() {
     tileMap.draw(cam);
     drawn.draw(cam, flip);
-    for(auto& p : projectiles)
-    {
-    p->draw(cam);
+    for(auto& p : projectiles){
+        p->draw(cam);
     }
     enemies.draw(cam);
     // gem.draw(cam, a);
@@ -893,6 +933,10 @@ void Board::draw() {
     if(state == GAME_OVER && !printed){
        std::cout << "GAME OVER - press R to restart\n";
        printed = true;
+    }
+    // draw particule
+    for(auto& p : particles) {
+      p->draw(cam);
     }
 }
 
