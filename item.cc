@@ -454,6 +454,33 @@ void Enemy::takeDamage(int dmg)
     }
 }
 
+/////////////////////////////////////classe de projectille///////////////////////
+
+Projectile::Projectile(float x, float y, float dirX, float dirY) {
+    setPos(x, y);
+    setSize(16, 16);
+
+    float speed = 400.0f;
+
+    float len = sqrt(dirX * dirX + dirY * dirY);
+
+    if(len == 0)
+        len = 1;
+
+    vx = dirX / len * speed;
+    vy = dirY / len * speed;
+}
+
+void Projectile::update(int tick, float deltaTime)
+{
+    // déplacer le projectile
+    move(vx * deltaTime, vy * deltaTime);
+
+    // retirer si hors de l'écran
+    if(getX() < 0 || getX() > 5000 || getY() < 0 || getY() > 5000)
+        alive = false;
+}
+
 ///////////////////////////////////classe groupe ///////////////////////////////
 
 void Group::draw(const Camera& cam, SDL_RendererFlip flip) {
@@ -641,7 +668,65 @@ void Board::update(int tick, float deltaTime) {
      {
        player.move(0, -sy);
      }
+    // lancer projectille
+    for(auto& p : projectiles)
+    {
+    p->update(tick, deltaTime);
+    }
+    // Collision projectile ↔ ennemi
+    for(auto& p : projectiles)
+    {
+    if(!p->isAlive())
+        continue;
 
+    SDL_Rect pr = p->getPos();
+
+    for(auto* e : enemies.getRaw())
+    {
+        if(e->isDead())
+            continue;
+
+        SDL_Rect er = e->getPos();
+
+        if(SDL_HasIntersection(&pr, &er))
+        {
+            e->takeDamage(20);
+
+            Enemy* enemy =
+                static_cast<Enemy*>(e);
+
+            enemy->applyKnockback(
+                p->getX(),
+                p->getY());
+
+            p->kill();
+
+            break;
+        }
+    }
+    }
+    // Collision projectile ↔ mur
+   for(auto& p : projectiles)
+   {
+    p->update(tick, deltaTime);
+
+    // collision avec la map
+    if(collideWithMap(p->getPos()))
+    {
+        p->kill();  // ou p->setAlive(false)
+    }
+   }
+//    supprétion d'ennims
+    projectiles.erase(
+    std::remove_if(
+        projectiles.begin(),
+        projectiles.end(),
+        [](const auto& p)
+        {
+            return !p->isAlive();
+        }),
+    projectiles.end()
+);
     // attacke ennemis et player
     player.damageCooldown -= deltaTime;
     for (auto* e : enemies.getRaw())
@@ -739,7 +824,25 @@ void Board::handleEvent(const SDL_Event& ev) {
                         player.attacking = true; 
                         player.attackCooldown = 0.35f;
                     } break;
-                }
+                    case SDLK_f:{
+                       float dirX = (flip == SDL_FLIP_NONE) ? 1.0f : -1.0f;
+                       float dirY = 0.0f;
+
+                       auto p = std::make_unique<Projectile>(
+                              player.getX() + 20,
+                              player.getY() + 20,
+                              dirX,
+                              dirY
+                            );
+
+                      p->setRenderer(render);
+                      p->loadFromImage("yellow.png");
+
+                      projectiles.push_back(std::move(p));
+
+                      break;
+                    }
+               }
         break;
         case SDL_KEYUP:
                 switch(ev.key.keysym.sym) {
@@ -776,6 +879,10 @@ void Board::resetGame(){
 void Board::draw() {
     tileMap.draw(cam);
     drawn.draw(cam, flip);
+    for(auto& p : projectiles)
+    {
+    p->draw(cam);
+    }
     enemies.draw(cam);
     // gem.draw(cam, a);
     collide.draw(cam);

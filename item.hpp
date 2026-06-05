@@ -151,6 +151,25 @@ class Enemy : public Animation {
     void takeDamage(int dmg)override;
 };
 
+// classe de projectille
+
+class Projectile : public Item
+{
+private:
+    float vx;
+    float vy;
+
+    bool alive = true;
+
+public:
+    Projectile(float x, float y, float dirX, float dirY);
+
+    void update(int tick, float deltaTime) override;
+
+    bool isAlive() const { return alive; }
+    void kill() { alive = false; }
+};
+
 // ajout d'une classe qui regouperait les items
 
 class Group {
@@ -234,5 +253,7 @@ class Board {
     GameState state = PLAYING;
     // Hit stop
     float hitStop = 0;
+    // tir de projectille
+    std::vector<std::unique_ptr<Projectile>> projectiles;
 };
 
