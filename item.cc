@@ -448,7 +448,6 @@ void Enemy::takeDamage(int dmg)
         dead = true;
         state = DEAD;
     }
-    std::cout << "HIT FLASH ON\n";
 }
 
 ///////////////////////////////////classe groupe ///////////////////////////////
@@ -897,7 +896,7 @@ void TileMap::draw(const Camera& cam) {
     dst.w = TILE_SIZE;
     dst.h = TILE_SIZE;
     
-    // permet de déssiner la partie posiner dans le camera
+    // permet de déssiner la partie positionné dans le camera
     // debut
     int startX = cam.x / TILE_SIZE;
     int startY = cam.y / TILE_SIZE;
