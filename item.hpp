@@ -98,6 +98,8 @@ class Item : public Renderer{
     float hitActiveTime  = 0.15f;
     void drawHealthBar(const Camera& cam);
     int maxHP = 100;
+    int lives = 3;
+    int maxLives = 3;
 
     protected:
     Item* target = nullptr;

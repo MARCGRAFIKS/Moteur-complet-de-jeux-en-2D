@@ -167,10 +167,15 @@ void Item::takeDamage(int dmg)
 
     hp -= dmg;
 
-    if (hp <= 0)
-    {
-        hp = 0;
-        dead = true;
+    if (hp <= 0){
+        lives--;     // on perd une vie
+        if (lives > 0) {
+            hp = maxHP;   // reset vie
+            setPos(128, 128);
+        } else {
+            hp = 0;
+            dead = true;
+        }
     }
 }
 
@@ -922,13 +927,17 @@ void Board::update(int tick, float deltaTime) {
     for(auto& p : particles){
     p->update(tick, deltaTime);
     }
-//     //Suppression de particule
+     //Suppression de particule
     particles.erase(std::remove_if(particles.begin(), particles.end(), [](const std::unique_ptr<Particle>& p)
     {
          return !p->isAlive();
     }),
     particles.end()
    );
+//    contrôle gameOver
+   if(player.lives <= 0 && state == PLAYING){
+       state = GAME_OVER;
+    }
 }
 
 void Board::handleEvent(const SDL_Event& ev) {
@@ -978,29 +987,46 @@ void Board::handleEvent(const SDL_Event& ev) {
         break;
     }
     if(state == GAME_OVER) {
-       if(ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_r)
-       {
+       if(ev.type == SDL_KEYDOWN){
+        if(ev.key.keysym.sym == SDLK_r){
           resetGame();
-       }
+       } 
+       if(ev.key.keysym.sym == SDLK_c){
+            state = PLAYING;
+            player.lives = 3;
+            player.setHP(100);
+            player.setDead(false);
+            player.setPos(128, 128);
+        }
          return;
+        }
      }
 }
 
 void Board::resetGame(){
     state = PLAYING;
-    printed = false;
+    // printed = false;
     player.setPos(128, 128);
+    player.lives = 3;
     player.setHP(100);
     player.setDead(false);
 
     speedX = 0;
     speedY = 0;
+
+    enemies.items.clear();
+    projectiles.clear();
+    particles.clear();
 }
     
 void Board::draw() {
-    SDL_SetRenderDrawColor(render, 0, 0, 0, 255);
-    SDL_RenderClear(render);
+   
     tileMap.draw(cam);
+    for(int i = 0; i < player.lives; i++){
+    SDL_Rect r = {20 + i * 30, 20, 20, 20};
+    SDL_SetRenderDrawColor(render, 255, 0, 0, 255);
+    SDL_RenderFillRect(render, &r);
+    }
     drawn.draw(cam, flip);
     for(auto& p : projectiles){
         p->draw(cam);
