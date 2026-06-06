@@ -12,7 +12,9 @@ void quit_Item() {
     SDL_Quit();
 }
 
-Item::Item() : pos{0, 0, 64, 32}, oldTick(0) {}
+Item::Item() : pos{0, 0, 64, 32}, oldTick(0) {
+     maxHP = hp;
+}
 
 Item::~Item() {
     image = nullptr;
@@ -172,6 +174,36 @@ void Item::takeDamage(int dmg)
     }
 }
 
+void Item::drawHealthBar(const Camera& cam) {
+    if (dead) return;
+
+    SDL_Rect barBg;
+    barBg.x = pos.x - cam.x;
+    barBg.y = pos.y - cam.y - 10;
+    barBg.w = pos.w;
+    barBg.h = 6;
+
+    float ratio = (maxHP > 0) ? (float)hp / (float)maxHP : 0;
+
+    SDL_Rect barFill = barBg;
+    barFill.w = (int)(barBg.w * ratio);
+
+    // fond rouge
+    SDL_SetRenderDrawColor(render, 80, 0, 0, 255);
+    SDL_RenderFillRect(render, &barBg);
+
+    // vie verte
+    if(ratio > 0.6f) {
+        SDL_SetRenderDrawColor(render, 0, 200, 0, 255);
+    }else if(ratio > 0.3f){
+        SDL_SetRenderDrawColor(render, 255, 180, 0, 255);
+    }else{
+        SDL_SetRenderDrawColor(render, 220, 0, 0, 255);
+    }
+
+    SDL_RenderFillRect(render, &barFill);
+}
+
 //////////////////////// La clsse de l'animation ///////////////
 
  Animation::Animation() : frameCount(0), desiredDelta(0) {}
@@ -270,12 +302,23 @@ void Enemy::update(int tick, float deltaTime)
     }
 
     // KNOCKBACK
-    if(knockTimer > 0)
-    {
-        move(knockX * deltaTime, knockY * deltaTime);
-        knockTimer -= deltaTime;
-        return;
-    }
+    if(knockTimer > 0){
+       float vx = knockX * deltaTime;
+       float vy = knockY * deltaTime;
+       move(vx, 0);
+       if(collideTile(getPos())) {
+        move(-vx, 0);
+        knockX = 0;
+       }
+
+       move(0, vy);
+       if(collideTile(getPos())){
+       move(0, -vy);
+       knockY = 0;
+       }
+       knockTimer -= deltaTime;
+       return;
+   }
 
     if(!target || !map)
         return;
@@ -433,10 +476,10 @@ void Enemy::applyKnockback(float fromX, float fromY){
     dx /= len;
     dy /= len;
 
-    knockX = dx * 200.0f;
-    knockY = dy * 200.0f;
+    knockX = dx * 120.0f;
+    knockY = dy * 120.0f;
 
-    knockTimer = 0.15f;
+    knockTimer = 0.10f;
 }
 
 void Enemy::takeDamage(int dmg)
@@ -502,9 +545,8 @@ void Particle::update(int tick, float deltaTime) {
 }
 
 void Particle::draw(const Camera& cam) {
-    SDL_Rect r = {getX() - cam.x, getY() - cam.y, 12, 12};
-    float alpha = life / maxLife;
-    SDL_SetTextureColorMod(image, 255 * alpha, 255 * alpha, 255 * alpha);
+    SDL_Rect r = {getX() - cam.x, getY() - cam.y, 32, 32};
+    
     SDL_SetRenderDrawColor(render,255,0,0,255);
     SDL_RenderFillRect(render,&r);
 }
@@ -519,6 +561,7 @@ void Group::draw(const Camera& cam, SDL_RendererFlip flip) {
          if(item->isDead())
             continue;
       item->draw(cam, flip);
+      item->drawHealthBar(cam);
      }     
 }
 
@@ -526,6 +569,7 @@ void Group::draw(const Camera& cam, double angle, SDL_RendererFlip flip) {
     
      for(auto& item : gemItems) {
       item->draw(cam, angle, flip);
+      item->drawHealthBar(cam);
      }
         
 }
@@ -602,6 +646,7 @@ void Group::move(int x, int y) {
 ///////////////////////Board////////////////////////////
 
 Board::Board(SDL_Renderer* rend) : tileMap(rend){
+    srand(time(nullptr));
     render = rend;
     SDL_GetRendererOutputSize(rend, &cam.w, &cam.h);
     cam.x = 0;
@@ -617,14 +662,21 @@ Board::Board(SDL_Renderer* rend) : tileMap(rend){
     player.setSize(48, 48);
     player.setFPS(10);
 
+    for(int i = 0; i < 10; i++) { 
     auto enemy = std::make_unique<Enemy>();
     enemy->setRenderer(render);
     enemy->loadFromImage("terre.png");
-    enemy->setPos(300, 300);
+    int x, y;
+    do{
+        x = rand() % (MAP_W * TILE_SIZE);
+        y = rand() % (MAP_H * TILE_SIZE);
+        enemy->setPos(x, y);
+    } while(collideWithMap(enemy->getPos()));
     enemy->setMap(&tileMap);
     enemy->setTarget(&player);
     enemies.addRefe(enemy.get());
     enemies.add(std::move(enemy));
+    }
 
     gem.spawnItems(10, render);
 
@@ -705,10 +757,10 @@ void Board::update(int tick, float deltaTime) {
        player.move(0, -sy);
      }
     // lancer projectille
-    for(auto& p : projectiles)
-    {
-    p->update(tick, deltaTime);
-    }
+    // for(auto& p : projectiles)
+    // {
+    // p->update(tick, deltaTime);
+    // }
     // Collision projectile ↔ ennemi
     for(auto& p : projectiles)
     {
@@ -808,7 +860,8 @@ void Board::update(int tick, float deltaTime) {
                  Enemy* enemy = static_cast<Enemy*>(e);
                   enemy->applyKnockback(player.getX(), player.getY());
                    hitStop = 0.05f;
-                   for(int i = 0; i < 6; i++){
+
+                  for(int i = 0; i < 6; i++){
                   float vx = (rand() % 200 - 100);
                   float vy = (rand() % 200 - 100);
 
@@ -824,6 +877,31 @@ void Board::update(int tick, float deltaTime) {
         player.attackTimer = 0;
         player.alreadyHit = false;
         }
+    }
+    // ajout ennemis spontaner
+    if(enemies.getRaw().size() < 30) {
+        enemySpawnTimer += deltaTime;
+
+    if(enemySpawnTimer >= enemySpawnDelay){
+    if(enemySpawnDelay > 0.5f){
+    enemySpawnDelay -= 0.02f;
+    }
+    auto enemy = std::make_unique<Enemy>();
+    enemy->setRenderer(render);
+    enemy->loadFromImage("terre.png");
+    int x;
+    int y;
+    do{
+       x = rand() % (MAP_W * TILE_SIZE);
+       y = rand() % (MAP_H * TILE_SIZE);
+       enemy->setPos(x, y);
+    }while(collideWithMap(enemy->getPos()));
+    enemy->setMap(&tileMap);
+    enemy->setTarget(&player);
+
+    enemies.addRefe(enemy.get());
+    enemies.add(std::move(enemy));
+   }
     }
     // update des groupes
     enemies.update(tick, deltaTime);
@@ -844,7 +922,7 @@ void Board::update(int tick, float deltaTime) {
     for(auto& p : particles){
     p->update(tick, deltaTime);
     }
-    //Suppression de particule
+//     //Suppression de particule
     particles.erase(std::remove_if(particles.begin(), particles.end(), [](const std::unique_ptr<Particle>& p)
     {
          return !p->isAlive();
@@ -920,6 +998,8 @@ void Board::resetGame(){
 }
     
 void Board::draw() {
+    SDL_SetRenderDrawColor(render, 0, 0, 0, 255);
+    SDL_RenderClear(render);
     tileMap.draw(cam);
     drawn.draw(cam, flip);
     for(auto& p : projectiles){

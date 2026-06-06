@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <ctime>
 
 struct Cercle {
     int x, y;
@@ -95,6 +96,8 @@ class Item : public Renderer{
     float attackTimer = 0;
     float attackDuration = 0.35f;
     float hitActiveTime  = 0.15f;
+    void drawHealthBar(const Camera& cam);
+    int maxHP = 100;
 
     protected:
     Item* target = nullptr;
@@ -272,5 +275,8 @@ class Board {
     // tir de projectille
     std::vector<std::unique_ptr<Projectile>> projectiles;
     std::vector<std::unique_ptr<Particle>> particles;
+    //spawn automatique
+    float enemySpawnTimer = 0.0f;
+    float enemySpawnDelay = 3.0f;
 };
 
