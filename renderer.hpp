@@ -8,7 +8,8 @@
 #include<unordered_map>
 #include <SDL.h>
 #include <SDL_image.h>
-
+#include <SDL_ttf.h>
+ 
 // la classe de rendure
 class Renderer {
     public:

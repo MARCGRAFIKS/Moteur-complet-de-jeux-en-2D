@@ -254,6 +254,8 @@ class Board {
     void handleEvent(const SDL_Event& ev);
     void resetGame();
     void draw();
+    ~Board();
+    void createTextTexture();
 
     public:
     SDL_Renderer* render = nullptr;
@@ -280,5 +282,14 @@ class Board {
     //spawn automatique
     float enemySpawnTimer = 0.0f;
     float enemySpawnDelay = 3.0f;
+    // font
+    TTF_Font* font = nullptr;
+    SDL_Texture* fontTex     = nullptr;
+    SDL_Texture* restartTex  = nullptr;
+    SDL_Texture* continueTex = nullptr;
+    SDL_Rect gameOverRect;
+    SDL_Rect restartRect;
+    SDL_Rect continueRect;  
+    float gameOverAlpha = 0.0f;
 };
 

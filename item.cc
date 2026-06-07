@@ -5,10 +5,12 @@
 void init_Item(){
     SDL_Init(SDL_INIT_EVERYTHING);
     IMG_Init(IMG_INIT_PNG);
+    TTF_Init();
 }
 
 void quit_Item() {
     IMG_Quit();
+    TTF_Quit();
     SDL_Quit();
 }
 
@@ -652,8 +654,15 @@ void Group::move(int x, int y) {
 
 Board::Board(SDL_Renderer* rend) : tileMap(rend){
     srand(time(nullptr));
-    render = rend;
+    render  = rend;
+    font    = TTF_OpenFont("marc.ttf", 72);
+    if(!font){
+        std::cout << "TTF_OpenFont erreur : " << TTF_GetError() << std::endl;
+    }
+    fontTex = nullptr;
     SDL_GetRendererOutputSize(rend, &cam.w, &cam.h);
+    gameOverRect.x = cam.w/2 - gameOverRect.w/2;
+    gameOverRect.y = cam.h/2 - 100;
     cam.x = 0;
     cam.y = 0;
     a = 1.1;
@@ -686,6 +695,14 @@ Board::Board(SDL_Renderer* rend) : tileMap(rend){
     gem.spawnItems(10, render);
 
     drawn.addRefe(&player);
+}
+
+Board::~Board() {
+    TTF_CloseFont(font);
+    SDL_DestroyTexture(fontTex);
+    SDL_DestroyTexture(restartTex);
+    SDL_DestroyTexture(continueTex);
+    font = nullptr;
 }
 
 bool Board::collideWithMap(const SDL_Rect& rect)
@@ -916,8 +933,17 @@ void Board::update(int tick, float deltaTime) {
     // simple version (freeze jeu)
     if(player.isDead() && state == PLAYING)
      {
-        state = GAME_OVER;
+        state = GAME_OVER; 
+        gameOverAlpha = 0;
+        createTextTexture();
+
      } 
+     // mis en jour font
+      if(state == GAME_OVER){
+      gameOverAlpha += 100.0f * deltaTime;
+      if(gameOverAlpha > 180.0f)
+        gameOverAlpha = 180.0f;
+    } 
     // Bloquer gameplay si GAME OVER
      if(state != PLAYING)
      {
@@ -938,6 +964,7 @@ void Board::update(int tick, float deltaTime) {
    if(player.lives <= 0 && state == PLAYING){
        state = GAME_OVER;
     }
+
 }
 
 void Board::handleEvent(const SDL_Event& ev) {
@@ -1018,6 +1045,63 @@ void Board::resetGame(){
     projectiles.clear();
     particles.clear();
 }
+
+void Board::createTextTexture() {
+     if(!font){
+        std::cout << "Police non chargee\n";
+        return;
+    }
+    if(fontTex){
+      SDL_DestroyTexture(fontTex);
+       fontTex = nullptr;
+    }
+    if(restartTex){
+      SDL_DestroyTexture(restartTex);
+       restartTex = nullptr;
+    }
+
+    if(continueTex){
+      SDL_DestroyTexture(continueTex);
+      continueTex = nullptr;
+     }
+     SDL_Color red = {255,0,0,255};
+     SDL_Color white = {255,255,255,255};
+
+    SDL_Surface* surf = TTF_RenderText_Blended(font, "GAME OVER", red);
+    if(!surf){
+        std::cout << "TTF_RenderText erreur : " << TTF_GetError() << std::endl;
+        return;
+    }
+    
+    SDL_Surface* s2 = TTF_RenderText_Blended(font,"R - Restart",white);
+
+    SDL_Surface* s3 = TTF_RenderText_Blended(font,"C - Continue",white);
+
+    if(!surf || !s2 || !s3) return;
+
+    fontTex = SDL_CreateTextureFromSurface(render, surf);
+    restartTex  = SDL_CreateTextureFromSurface(render,s2);
+    continueTex = SDL_CreateTextureFromSurface(render,s3);
+
+    gameOverRect.w = surf->w;
+    gameOverRect.h = surf->h;
+    gameOverRect.x = cam.w/2 - surf->w/2;
+    gameOverRect.y = cam.h/2 - 150;
+
+    restartRect.w = s2->w;
+    restartRect.h = s2->h;
+    restartRect.x = cam.w/2 - s2->w/2;
+    restartRect.y = gameOverRect.y + 100;
+
+    continueRect.w = s3->w;
+    continueRect.h = s3->h;
+    continueRect.x = cam.w/2 - s3->w/2;
+    continueRect.y = restartRect.y + 150;
+
+    SDL_FreeSurface(surf);
+    SDL_FreeSurface(s2);
+    SDL_FreeSurface(s3);
+}
     
 void Board::draw() {
    
@@ -1043,6 +1127,17 @@ void Board::draw() {
     // draw particule
     for(auto& p : particles) {
       p->draw(cam);
+    }
+    if(state == GAME_OVER) {
+        SDL_SetRenderDrawBlendMode(render, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(render, 0, 0, 0, (Uint8)gameOverAlpha);
+        SDL_SetRenderDrawColor(render, 0, 0, 0, 180);
+        SDL_Rect overlay = {0, 0, cam.w, cam.h};
+        SDL_RenderFillRect(render, &overlay);
+        if(fontTex)
+        SDL_RenderCopy(render, fontTex, nullptr, &gameOverRect);
+        SDL_RenderCopy(render, restartTex, nullptr, &restartRect);
+        SDL_RenderCopy(render, continueTex, nullptr, &continueRect);
     }
 }
 
